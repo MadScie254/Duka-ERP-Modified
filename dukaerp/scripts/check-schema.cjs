@@ -90,4 +90,4 @@ async function main() {
     console.log('Demo user login response:', lb2.substring(0, 300));
   }
 }
-main().catch(e => { console.error(e.message); process.exit(1); });
+main().catch(e => { console.error('FATAL:', e.message, e.stack); process.exit(1); });
