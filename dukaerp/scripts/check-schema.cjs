@@ -7,25 +7,32 @@ const c = new pg.Client({
 async function main() {
   await c.connect();
 
-  // Check auth.users for demo user
-  const user = await c.query(
-    "SELECT id, email, encrypted_password, email_confirmed_at, role, aud, instance_id, is_sso_user, confirmation_token FROM auth.users WHERE email='demo@dukaerp.com'"
-  );
-  console.log('AUTH USER:', JSON.stringify(user.rows, null, 2));
+  // Fix: Insert the missing identity record for the demo user
+  const userId = '00000000-0000-0000-0000-000000000099';
+  
+  // Delete any bad identity rows first
+  await c.query("DELETE FROM auth.identities WHERE user_id = $1", [userId]);
 
-  // Check auth.identities
-  const ident = await c.query(
-    "SELECT id, provider, provider_id, user_id FROM auth.identities WHERE user_id='00000000-0000-0000-0000-000000000099'"
-  );
-  console.log('IDENTITIES:', JSON.stringify(ident.rows, null, 2));
+  // Insert proper identity
+  await c.query(`
+    INSERT INTO auth.identities (
+      id, provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+    ) VALUES (
+      gen_random_uuid(),
+      $1,
+      $2::uuid,
+      jsonb_build_object('sub', $1, 'email', 'demo@dukaerp.com', 'email_verified', true, 'phone_verified', false),
+      'email',
+      now(),
+      now(),
+      now()
+    )
+  `, [userId, userId]);
+  console.log('Identity record inserted for demo user');
 
-  // Check profiles
-  const prof = await c.query("SELECT * FROM profiles WHERE id='00000000-0000-0000-0000-000000000099'");
-  console.log('PROFILE:', JSON.stringify(prof.rows, null, 2));
-
-  // Check shops
-  const shop = await c.query("SELECT id, owner_id, name FROM shops WHERE owner_id='00000000-0000-0000-0000-000000000099'");
-  console.log('SHOPS:', JSON.stringify(shop.rows, null, 2));
+  // Verify
+  const ident = await c.query("SELECT id, provider, provider_id FROM auth.identities WHERE user_id = $1", [userId]);
+  console.log('IDENTITIES:', JSON.stringify(ident.rows));
 
   await c.end();
 }
