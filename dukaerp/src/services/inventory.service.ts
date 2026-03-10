@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Product, ProductInsert, ProductUpdate, ProductWithCategory, Category, StockAdjustment, AdjustmentReason } from "@/types";
+import type { Product, ProductInsert, ProductUpdate, ProductWithCategory, Category, StockMovement, MovementType } from "@/types";
 
 export const inventoryService = {
   async listProducts(shopId: string): Promise<ProductWithCategory[]> {
@@ -61,10 +61,10 @@ export const inventoryService = {
     return data;
   },
 
-  async createCategory(shopId: string, name: string, description?: string): Promise<Category> {
+  async createCategory(shopId: string, name: string, color?: string): Promise<Category> {
     const { data, error } = await supabase
       .from("categories")
-      .insert({ shop_id: shopId, name, description })
+      .insert({ shop_id: shopId, name, color })
       .select()
       .single();
     if (error) throw error;
@@ -76,32 +76,33 @@ export const inventoryService = {
     product_id: string;
     previous_quantity: number;
     new_quantity: number;
-    reason: AdjustmentReason;
+    type: MovementType;
     notes?: string;
-    adjusted_by?: string;
-  }): Promise<StockAdjustment> {
+    created_by?: string;
+  }): Promise<StockMovement> {
     // Update product stock
     const { error: prodErr } = await supabase
       .from("products")
-      .update({ stock_quantity: payload.new_quantity })
+      .update({ quantity_in_stock: payload.new_quantity })
       .eq("id", payload.product_id);
     if (prodErr) throw prodErr;
 
-    // Record adjustment
+    const delta = payload.new_quantity - payload.previous_quantity;
+
+    // Record movement
     const { data, error } = await supabase
-      .from("stock_adjustments")
-      .insert(payload)
+      .from("stock_movements")
+      .insert({
+        shop_id: payload.shop_id,
+        product_id: payload.product_id,
+        type: payload.type,
+        quantity: delta,
+        notes: payload.notes ?? null,
+        created_by: payload.created_by ?? null,
+      })
       .select()
       .single();
     if (error) throw error;
     return data;
-  },
-
-  async getLowStockProducts(shopId: string): Promise<Product[]> {
-    const { data, error } = await supabase
-      .rpc("stock_valuation", { p_shop_id: shopId });
-    if (error) throw error;
-    // Filter to low stock (where stock_quantity <= reorder_level equivalent)
-    return data as unknown as Product[];
   },
 };

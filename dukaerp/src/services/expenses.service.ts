@@ -1,15 +1,15 @@
 import { supabase } from "@/lib/supabase";
-import type { Expense, ExpenseInsert, ExpenseUpdate } from "@/types";
+import type { Expense, ExpenseInsert, ExpenseUpdate, ExpenseCategory, ExpenseWithCategory } from "@/types";
 
 export const expensesService = {
-  async listExpenses(shopId: string): Promise<Expense[]> {
+  async listExpenses(shopId: string): Promise<ExpenseWithCategory[]> {
     const { data, error } = await supabase
       .from("expenses")
-      .select("*")
+      .select("*, expense_categories(name, color)")
       .eq("shop_id", shopId)
       .order("incurred_at", { ascending: false });
     if (error) throw error;
-    return data;
+    return data as unknown as ExpenseWithCategory[];
   },
 
   async getExpense(id: string): Promise<Expense> {
@@ -37,5 +37,27 @@ export const expensesService = {
   async deleteExpense(id: string): Promise<void> {
     const { error } = await supabase.from("expenses").delete().eq("id", id);
     if (error) throw error;
+  },
+
+  async listCategories(shopId: string): Promise<ExpenseCategory[]> {
+    const { data, error } = await supabase
+      .from("expense_categories")
+      .select("*")
+      .eq("shop_id", shopId)
+      .order("name");
+    if (error) throw error;
+    return data;
+  },
+
+  async ensureDefaultCategories(shopId: string, names: string[]): Promise<ExpenseCategory[]> {
+    const existing = await this.listCategories(shopId);
+    if (existing.length > 0) return existing;
+    const rows = names.map((name) => ({ shop_id: shopId, name }));
+    const { data, error } = await supabase
+      .from("expense_categories")
+      .insert(rows)
+      .select();
+    if (error) throw error;
+    return data;
   },
 };

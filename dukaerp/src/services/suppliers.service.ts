@@ -1,8 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Supplier } from "@/types";
-
-export type SupplierInsert = Omit<Supplier, "id" | "created_at" | "updated_at">;
-export type SupplierUpdate = Partial<Omit<SupplierInsert, "shop_id">>;
+import type { Supplier, SupplierInsert, SupplierUpdate } from "@/types";
 
 export const suppliersService = {
   async listSuppliers(shopId: string): Promise<Supplier[]> {

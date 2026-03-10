@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Customer, CustomerInsert, CustomerUpdate, DebtRecord, DebtPayment, PaymentMethod } from "@/types";
+import type { Customer, CustomerInsert, CustomerUpdate, CustomerDebt } from "@/types";
 
 export const customersService = {
   async listCustomers(shopId: string): Promise<Customer[]> {
@@ -39,55 +39,50 @@ export const customersService = {
     if (error) throw error;
   },
 
-  async getCustomerDebts(customerId: string): Promise<DebtRecord[]> {
+  /** Get credit/payment history for a customer */
+  async getCustomerDebtEntries(customerId: string): Promise<CustomerDebt[]> {
     const { data, error } = await supabase
-      .from("debt_records")
+      .from("customer_debts")
       .select("*")
       .eq("customer_id", customerId)
-      .eq("is_settled", false)
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data;
   },
 
-  async recordDebtPayment(debtId: string, amount: number, method: PaymentMethod = 'cash'): Promise<DebtPayment> {
-    // Insert debt payment
+  /** Record a debt payment (inserts type='payment' into customer_debts; trigger updates total_debt) */
+  async recordDebtPayment(payload: {
+    shop_id: string;
+    customer_id: string;
+    amount: number;
+    notes?: string;
+    created_by?: string;
+  }): Promise<CustomerDebt> {
     const { data, error } = await supabase
-      .from("debt_payments")
-      .insert({ debt_id: debtId, amount, method })
+      .from("customer_debts")
+      .insert({
+        shop_id: payload.shop_id,
+        customer_id: payload.customer_id,
+        type: 'payment' as const,
+        amount: payload.amount,
+        notes: payload.notes || null,
+        created_by: payload.created_by || null,
+      })
       .select()
       .single();
     if (error) throw error;
-
-    // Update remaining amount on debt record
-    const { data: debt, error: debtErr } = await supabase
-      .from("debt_records")
-      .select("remaining_amount")
-      .eq("id", debtId)
-      .single();
-    if (debtErr) throw debtErr;
-
-    const newRemaining = debt.remaining_amount - amount;
-    const { error: updateErr } = await supabase
-      .from("debt_records")
-      .update({
-        remaining_amount: Math.max(0, newRemaining),
-        is_settled: newRemaining <= 0,
-      })
-      .eq("id", debtId);
-    if (updateErr) throw updateErr;
-
     return data;
   },
 
-  async listAllDebts(shopId: string): Promise<DebtRecord[]> {
+  /** List customers who owe money */
+  async listCustomersWithDebt(shopId: string): Promise<Customer[]> {
     const { data, error } = await supabase
-      .from("debt_records")
-      .select("*, customers(name, phone)")
+      .from("customers")
+      .select("*")
       .eq("shop_id", shopId)
-      .eq("is_settled", false)
-      .order("created_at", { ascending: false });
+      .gt("total_debt", 0)
+      .order("total_debt", { ascending: false });
     if (error) throw error;
-    return data as unknown as DebtRecord[];
+    return data;
   },
 };
