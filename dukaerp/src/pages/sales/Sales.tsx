@@ -6,9 +6,8 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
-  pending: "bg-yellow-100 text-yellow-700",
-  voided: "bg-red-100 text-red-700",
-  refunded: "bg-slate-100 text-slate-600",
+  refunded: "bg-red-100 text-red-700",
+  partial_refund: "bg-yellow-100 text-yellow-700",
 };
 
 const Sales = () => {
@@ -40,7 +39,7 @@ const Sales = () => {
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold">Receipt</th>
                   <th className="text-left px-4 py-3 font-semibold">Customer</th>
-                  <th className="text-left px-4 py-3 font-semibold">Method</th>
+                  <th className="text-right px-4 py-3 font-semibold">Paid</th>
                   <th className="text-right px-4 py-3 font-semibold">Total</th>
                   <th className="text-left px-4 py-3 font-semibold">Status</th>
                   <th className="text-left px-4 py-3 font-semibold">Date</th>
@@ -57,7 +56,7 @@ const Sales = () => {
                     <td className="px-4 py-3 text-slate-700">
                       {sale.customers?.name ?? "Walk-in"}
                     </td>
-                    <td className="px-4 py-3 text-slate-700 capitalize">{sale.payment_method}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(sale.amount_paid)}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-900">
                       {formatCurrency(sale.total_amount)}
                     </td>

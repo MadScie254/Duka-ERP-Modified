@@ -103,7 +103,7 @@ const POS = () => {
             >
               <p className="font-semibold text-slate-800 truncate">{p.name}</p>
               <p className="text-sm text-brand-700 font-bold">{formatCurrency(p.selling_price)}</p>
-              <p className="text-xs text-slate-400">Stock: {p.stock_quantity}</p>
+              <p className="text-xs text-slate-400">Stock: {p.quantity_in_stock}</p>
             </button>
           ))}
           {filtered.length === 0 && <p className="text-sm text-slate-500 col-span-full">No products found</p>}

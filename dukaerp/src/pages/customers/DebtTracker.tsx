@@ -1,4 +1,4 @@
-import { useDebts } from "@/hooks/useCustomers";
+import { useDebtors } from "@/hooks/useCustomers";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import StatCard from "@/components/common/StatCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -6,11 +6,11 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
 const DebtTracker = () => {
-  const { debts } = useDebts();
+  const { debtors } = useDebtors();
   const { debtAging } = useAnalytics();
 
-  const totalOutstanding = (debts.data ?? []).reduce((sum: number, d: any) => sum + d.remaining_amount, 0);
-  const customerCount = new Set((debts.data ?? []).map((d: any) => d.customer_id)).size;
+  const totalOutstanding = (debtors.data ?? []).reduce((sum, c) => sum + (c.total_debt ?? 0), 0);
+  const customerCount = (debtors.data ?? []).length;
 
   return (
     <div className="space-y-4">
@@ -23,11 +23,11 @@ const DebtTracker = () => {
         <div className="card p-4">
           <p className="text-sm font-semibold mb-3">Aging Summary</p>
           <div className="grid gap-3 md:grid-cols-4">
-            {debtAging.data.map((row: any) => (
-              <div key={row.bucket} className="rounded-lg border border-slate-200 p-3">
-                <p className="text-xs text-slate-500">{row.bucket}</p>
-                <p className="text-lg font-bold text-slate-900">{formatCurrency(row.total_amount)}</p>
-                <p className="text-xs text-slate-500">{row.customer_count} customer{row.customer_count !== 1 ? "s" : ""}</p>
+            {debtAging.data.map((row) => (
+              <div key={row.customer_id} className="rounded-lg border border-slate-200 p-3">
+                <p className="text-xs text-slate-500">{row.customer_name}</p>
+                <p className="text-lg font-bold text-slate-900">{formatCurrency(row.total_debt)}</p>
+                <p className="text-xs text-slate-500">{row.bucket} &bull; {row.oldest_days}d overdue</p>
               </div>
             ))}
           </div>
@@ -35,9 +35,9 @@ const DebtTracker = () => {
       )}
 
       <div className="card p-4">
-        {debts.isLoading ? (
+        {debtors.isLoading ? (
           <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : !(debts.data ?? []).length ? (
+        ) : !(debtors.data ?? []).length ? (
           <p className="text-sm text-slate-500">No outstanding debts</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -45,24 +45,24 @@ const DebtTracker = () => {
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold">Customer</th>
-                  <th className="text-right px-4 py-3 font-semibold">Original</th>
-                  <th className="text-right px-4 py-3 font-semibold">Remaining</th>
-                  <th className="text-left px-4 py-3 font-semibold">Due Date</th>
-                  <th className="text-left px-4 py-3 font-semibold">Created</th>
+                  <th className="text-left px-4 py-3 font-semibold">Phone</th>
+                  <th className="text-right px-4 py-3 font-semibold">Credit Limit</th>
+                  <th className="text-right px-4 py-3 font-semibold">Total Debt</th>
+                  <th className="text-left px-4 py-3 font-semibold">Since</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {(debts.data ?? []).map((d: any) => (
-                  <tr key={d.id} className="hover:bg-slate-50">
+                {(debtors.data ?? []).map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <Link to={`/customers/${d.customer_id}`} className="text-brand-700 font-medium hover:underline">
-                        {d.customers?.name ?? "Unknown"}
+                      <Link to={`/customers/${c.id}`} className="text-brand-700 font-medium hover:underline">
+                        {c.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(d.original_amount)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-red-600">{formatCurrency(d.remaining_amount)}</td>
-                    <td className="px-4 py-3 text-slate-500">{d.due_date ? formatDate(d.due_date) : "—"}</td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(d.created_at)}</td>
+                    <td className="px-4 py-3 text-slate-700">{c.phone ?? "—"}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(c.credit_limit ?? 0)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-red-600">{formatCurrency(c.total_debt)}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

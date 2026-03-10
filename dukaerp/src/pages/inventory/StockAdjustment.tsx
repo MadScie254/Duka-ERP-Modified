@@ -6,15 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import toast from "react-hot-toast";
-import type { AdjustmentReason } from "@/types";
+import type { MovementType } from "@/types";
 
-const reasons: { value: AdjustmentReason; label: string }[] = [
-  { value: "count_correction", label: "Count correction" },
+const movementTypes: { value: MovementType; label: string }[] = [
+  { value: "adjustment", label: "Count correction" },
   { value: "damage", label: "Damage" },
-  { value: "theft", label: "Theft" },
-  { value: "expiry", label: "Expiry" },
-  { value: "restock", label: "Restock" },
-  { value: "other", label: "Other" },
+  { value: "return", label: "Return" },
+  { value: "purchase", label: "Restock / Purchase" },
+  { value: "transfer", label: "Transfer" },
 ];
 
 const StockAdjustment = () => {
@@ -22,7 +21,7 @@ const StockAdjustment = () => {
   const { products, adjustStock } = useInventory();
   const [productId, setProductId] = useState("");
   const [newCount, setNewCount] = useState("");
-  const [reason, setReason] = useState<AdjustmentReason>("count_correction");
+  const [type, setType] = useState<MovementType>("adjustment");
   const [notes, setNotes] = useState("");
 
   const selectedProduct = (products.data ?? []).find((p) => p.id === productId);
@@ -33,9 +32,9 @@ const StockAdjustment = () => {
     adjustStock.mutate(
       {
         product_id: productId,
-        previous_quantity: selectedProduct.stock_quantity,
+        previous_quantity: selectedProduct.quantity_in_stock,
         new_quantity: Number(newCount),
-        reason,
+        type,
         notes: notes || undefined,
       },
       {
@@ -63,7 +62,7 @@ const StockAdjustment = () => {
             <option value="">-- Select product --</option>
             {(products.data ?? []).map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} (current: {p.stock_quantity})
+                {p.name} (current: {p.quantity_in_stock})
               </option>
             ))}
           </Select>
@@ -72,13 +71,13 @@ const StockAdjustment = () => {
           <Label>New Count</Label>
           <Input type="number" min={0} required value={newCount} onChange={(e) => setNewCount(e.target.value)} />
           {selectedProduct && (
-            <p className="text-xs text-slate-500">Current stock: {selectedProduct.stock_quantity}</p>
+            <p className="text-xs text-slate-500">Current stock: {selectedProduct.quantity_in_stock}</p>
           )}
         </div>
         <div className="space-y-1 md:col-span-2">
           <Label>Reason</Label>
-          <Select required value={reason} onChange={(e) => setReason(e.target.value as AdjustmentReason)}>
-            {reasons.map((r) => (
+          <Select required value={type} onChange={(e) => setType(e.target.value as MovementType)}>
+            {movementTypes.map((r) => (
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </Select>

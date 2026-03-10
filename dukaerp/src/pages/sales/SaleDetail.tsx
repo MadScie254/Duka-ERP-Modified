@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 const SaleDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: sale, isLoading } = useSaleDetail(id ?? "");
-  const { voidSale } = useSales();
+  const { refundSale } = useSales();
 
   if (isLoading) {
     return (
@@ -23,13 +23,17 @@ const SaleDetail = () => {
     return <p className="text-sm text-slate-500">Sale not found.</p>;
   }
 
-  const handleVoid = () => {
+  const handleRefund = () => {
     if (sale.status !== "completed") return;
-    voidSale.mutate(sale.id, {
-      onSuccess: () => toast.success("Sale voided"),
+    refundSale.mutate(sale.id, {
+      onSuccess: () => toast.success("Sale refunded"),
       onError: (e) => toast.error(e.message),
     });
   };
+
+  // Get payment method from joined payments
+  const paymentMethods = (sale as any).payments?.map((p: any) => p.method).filter(Boolean) ?? [];
+  const paymentDisplay = paymentMethods.length ? paymentMethods.join(", ") : "—";
 
   return (
     <div className="space-y-4">
@@ -40,8 +44,8 @@ const SaleDetail = () => {
         </div>
         <div className="flex gap-2">
           {sale.status === "completed" && (
-            <Button variant="outline" onClick={handleVoid} disabled={voidSale.isPending}>
-              {voidSale.isPending ? "Voiding…" : "Void sale"}
+            <Button variant="outline" onClick={handleRefund} disabled={refundSale.isPending}>
+              {refundSale.isPending ? "Refunding…" : "Refund sale"}
             </Button>
           )}
           <Button onClick={() => window.print()}>Print receipt</Button>
@@ -55,7 +59,7 @@ const SaleDetail = () => {
         </div>
         <div>
           <p className="text-xs text-slate-500">Payment Method</p>
-          <p className="font-medium text-slate-900 capitalize">{sale.payment_method}</p>
+          <p className="font-medium text-slate-900 capitalize">{paymentDisplay}</p>
         </div>
         <div>
           <p className="text-xs text-slate-500">Status</p>
@@ -66,8 +70,8 @@ const SaleDetail = () => {
           <p className="font-medium text-slate-900">{formatDateTime(sale.created_at)}</p>
         </div>
         <div>
-          <p className="text-xs text-slate-500">Subtotal</p>
-          <p className="font-medium text-slate-900">{formatCurrency(sale.subtotal)}</p>
+          <p className="text-xs text-slate-500">Amount Paid</p>
+          <p className="font-medium text-slate-900">{formatCurrency(sale.amount_paid)}</p>
         </div>
         <div>
           <p className="text-xs text-slate-500">Total</p>
@@ -85,7 +89,7 @@ const SaleDetail = () => {
                   <th className="text-left px-4 py-3 font-semibold">Product</th>
                   <th className="text-right px-4 py-3 font-semibold">Qty</th>
                   <th className="text-right px-4 py-3 font-semibold">Unit Price</th>
-                  <th className="text-right px-4 py-3 font-semibold">Line Total</th>
+                  <th className="text-right px-4 py-3 font-semibold">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -94,7 +98,7 @@ const SaleDetail = () => {
                     <td className="px-4 py-3 text-slate-700">{item.product_name}</td>
                     <td className="px-4 py-3 text-right text-slate-700">{item.quantity}</td>
                     <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(item.unit_price)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-900">{formatCurrency(item.line_total)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-900">{formatCurrency(item.total_price)}</td>
                   </tr>
                 ))}
               </tbody>

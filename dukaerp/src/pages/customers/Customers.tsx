@@ -87,9 +87,8 @@ const Customers = () => {
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold">Name</th>
                   <th className="text-left px-4 py-3 font-semibold">Phone</th>
-                  <th className="text-right px-4 py-3 font-semibold">Purchases</th>
+                  <th className="text-right px-4 py-3 font-semibold">Credit Limit</th>
                   <th className="text-right px-4 py-3 font-semibold">Debt</th>
-                  <th className="text-right px-4 py-3 font-semibold">Points</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -101,11 +100,10 @@ const Customers = () => {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-slate-700">{c.phone ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(c.total_purchases ?? 0)}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(c.credit_limit ?? 0)}</td>
                     <td className="px-4 py-3 text-right font-medium" style={{ color: (c.total_debt ?? 0) > 0 ? "#dc2626" : "#16a34a" }}>
                       {formatCurrency(c.total_debt ?? 0)}
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-700">{c.loyalty_points ?? 0}</td>
                   </tr>
                 ))}
               </tbody>

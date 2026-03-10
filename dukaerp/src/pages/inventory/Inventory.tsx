@@ -18,7 +18,7 @@ const Inventory = () => {
       name: p.name,
       sku: p.sku ?? "-",
       category: p.categories?.name ?? "Uncategorized",
-      stock: p.stock_quantity,
+      stock: p.quantity_in_stock,
       price: formatCurrency(p.selling_price),
       margin: `${Math.round(((p.selling_price - p.cost_price) / p.selling_price) * 100)}%`,
     }));

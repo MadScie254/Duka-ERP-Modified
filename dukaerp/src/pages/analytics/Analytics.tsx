@@ -24,7 +24,7 @@ const Analytics = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <RevenueLineChart data={trend.data} loading={trend.isLoading} />
+        <RevenueLineChart dataquantity_in_stockloading={trend.isLoading} />
         <SalesByProductChart data={topProducts.data} loading={topProducts.isLoading} />
       </div>
 
@@ -88,7 +88,7 @@ const Analytics = () => {
                   {stockValuation.data!.slice(0, 10).map((row) => (
                     <tr key={row.product_name}>
                       <td className="px-4 py-3 text-slate-700">{row.product_name}</td>
-                      <td className="px-4 py-3 text-right text-slate-700">{row.stock_quantity}</td>
+                      <td className="px-4 py-3 text-right text-slate-700">{row.quantity_in_stock}</td>
                       <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(row.cost_value)}</td>
                       <td className="px-4 py-3 text-right font-medium text-slate-900">{formatCurrency(row.retail_value)}</td>
                     </tr>

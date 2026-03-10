@@ -4,7 +4,7 @@ import EmptyState from "@/components/common/EmptyState";
 import type { PaymentMethodBreakdown } from "@/types";
 
 const COLORS = ["#22c55e", "#0ea5e9", "#f59e0b", "#ef4444", "#8b5cf6"];
-const LABELS: Record<string, string> = { cash: "Cash", mpesa: "M-Pesa", credit: "Credit", card: "Card", bank_transfer: "Bank" };
+const LABELS: Record<string, string> = { cash: "Cash", mpesa: "M-Pesa", credit: "Credit", card: "Card", bank: "Bank" };
 
 interface Props {
   data?: PaymentMethodBreakdown[];

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,21 +7,42 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { KE_CONSTANTS } from "@/lib/constants";
+import { expensesService } from "@/services/expenses.service";
+import { useAuthStore } from "@/store/authStore";
+import { queryClient } from "@/lib/queryClient";
+import { expenseKeys } from "@/hooks/useExpenses";
 import toast from "react-hot-toast";
-import type { PaymentMethod } from "@/types";
+import type { ExpensePaymentMethod } from "@/types";
 
 const Expenses = () => {
-  const { expenses, createExpense, deleteExpense } = useExpenses();
+  const shopId = useAuthStore((s) => s.activeShop?.id ?? "");
+  const { expenses, expenseCategories, createExpense, deleteExpense } = useExpenses();
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState(KE_CONSTANTS.defaultExpenseCategories[0]);
-  const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [categoryId, setCategoryId] = useState("");
+  const [method, setMethod] = useState<ExpensePaymentMethod>("cash");
+
+  // Auto-seed default expense categories if none exist
+  useEffect(() => {
+    if (expenseCategories.data && expenseCategories.data.length === 0 && shopId) {
+      expensesService
+        .ensureDefaultCategories(shopId, KE_CONSTANTS.defaultExpenseCategories)
+        .then(() => queryClient.invalidateQueries({ queryKey: expenseKeys.categories(shopId) }));
+    }
+  }, [expenseCategories.data, shopId]);
+
+  // Set default category when categories load
+  useEffect(() => {
+    if (expenseCategories.data?.length && !categoryId) {
+      setCategoryId(expenseCategories.data[0].id);
+    }
+  }, [expenseCategories.data, categoryId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!desc || !amount) return;
     createExpense.mutate(
-      { description: desc, amount: Number(amount), category, payment_method: method, incurred_at: new Date().toISOString().slice(0, 10) },
+      { description: desc, amount: Number(amount), category_id: categoryId || undefined, payment_method: method, incurred_at: new Date().toISOString().slice(0, 10) },
       {
         onSuccess: () => { toast.success("Expense added"); setDesc(""); setAmount(""); },
         onError: (err) => toast.error(err.message),
@@ -59,18 +80,19 @@ const Expenses = () => {
           </div>
           <div className="space-y-1">
             <Label>Category</Label>
-            <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {KE_CONSTANTS.defaultExpenseCategories.map((c) => (
-                <option key={c} value={c}>{c}</option>
+            <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">-- Select --</option>
+              {(expenseCategories.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </Select>
           </div>
           <div className="space-y-1">
             <Label>Payment Method</Label>
-            <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+            <Select value={method} onChange={(e) => setMethod(e.target.value as ExpensePaymentMethod)}>
               <option value="cash">Cash</option>
               <option value="mpesa">M-Pesa</option>
-              <option value="bank_transfer">Bank Transfer</option>
+              <option value="bank">Bank Transfer</option>
             </Select>
           </div>
         </form>
@@ -96,7 +118,7 @@ const Expenses = () => {
                 {expenses.data!.map((exp) => (
                   <tr key={exp.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-700">{exp.description}</td>
-                    <td className="px-4 py-3 text-slate-500">{exp.category ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-500">{exp.expense_categories?.name ?? "—"}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-900">{formatCurrency(exp.amount)}</td>
                     <td className="px-4 py-3 text-slate-500 capitalize">{exp.payment_method}</td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(exp.incurred_at)}</td>
