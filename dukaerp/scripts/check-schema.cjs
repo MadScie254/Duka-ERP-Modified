@@ -7,89 +7,86 @@ const c = new pg.Client({
 async function main() {
   await c.connect();
   
-  // Check all triggers on auth.users
-  const authTriggers = await c.query(`
-    SELECT trigger_name, action_statement 
-    FROM information_schema.triggers 
-    WHERE event_object_schema = 'auth' AND event_object_table = 'users'
-    ORDER BY trigger_name
+  // Check table ownership of auth.users
+  const owner = await c.query(`
+    SELECT tableowner FROM pg_tables WHERE schemaname = 'auth' AND tablename = 'users'
   `);
-  console.log('AUTH.USERS TRIGGERS:');
-  authTriggers.rows.forEach(r => console.log(`  ${r.trigger_name}: ${r.action_statement}`));
+  console.log('AUTH.USERS OWNER:', owner.rows[0]?.tableowner);
   
-  // Check the RLS policies on auth tables
-  const authPolicies = await c.query(`
-    SELECT schemaname, tablename, policyname, cmd, qual 
-    FROM pg_policies WHERE schemaname = 'auth'
-  `).catch(e => ({ rows: [], error: e.message }));
-  console.log('\nAUTH POLICIES:', JSON.stringify(authPolicies.rows || authPolicies.error));
-  
-  // Check auth-related roles
-  const roles = await c.query(`
-    SELECT rolname, rolcanlogin FROM pg_roles 
-    WHERE rolname LIKE '%auth%' OR rolname LIKE '%gotrue%' OR rolname = 'authenticator'
+  // Check auth schema ownership
+  const schemaOwner = await c.query(`
+    SELECT nspname, pg_catalog.pg_get_userbyid(nspowner) as owner 
+    FROM pg_namespace WHERE nspname = 'auth'
   `);
-  console.log('\nAUTH-RELATED ROLES:', JSON.stringify(roles.rows));
+  console.log('AUTH SCHEMA OWNER:', schemaOwner.rows[0]?.owner);
   
-  // Check ALL auth tables
-  const authTables = await c.query(`
-    SELECT table_name FROM information_schema.tables 
-    WHERE table_schema = 'auth' ORDER BY table_name
+  // Check what the supabase_auth_admin role can do
+  const authAdminPrivs = await c.query(`
+    SELECT r.rolname, r.rolsuper, r.rolinherit, r.rolcreaterole, r.rolcreatedb,
+           r.rolcanlogin, r.rolconnlimit,
+           ARRAY(SELECT b.rolname 
+                 FROM pg_catalog.pg_auth_members m 
+                 JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid) 
+                 WHERE m.member = r.oid) as member_of
+    FROM pg_catalog.pg_roles r 
+    WHERE r.rolname = 'supabase_auth_admin'
   `);
-  console.log('\nALL AUTH TABLES:', authTables.rows.map(r => r.table_name).join(', '));
+  console.log('\nSUPABASE_AUTH_ADMIN:', JSON.stringify(authAdminPrivs.rows));
   
-  // Check auth.users grants
-  const grants = await c.query(`
-    SELECT grantee, privilege_type FROM information_schema.table_privileges 
-    WHERE table_schema = 'auth' AND table_name = 'users' 
-    ORDER BY grantee
+  // Check what supabase_auth_admin owns in auth schema
+  const authAdminOwned = await c.query(`
+    SELECT tablename FROM pg_tables WHERE schemaname = 'auth' AND tableowner = 'supabase_auth_admin'
   `);
-  console.log('\nAUTH.USERS GRANTS:');
-  grants.rows.forEach(r => console.log(`  ${r.grantee}: ${r.privilege_type}`));
+  console.log('\nTABLES OWNED BY supabase_auth_admin:', authAdminOwned.rows.map(r => r.tablename).join(', '));
   
-  // Check for any search_path issues with the handle_new_user function
-  const funcConfig = await c.query(`
-    SELECT p.proname, p.proconfig, n.nspname, 
-           pg_get_functiondef(p.oid) as funcdef
+  // Check all table owners in auth schema
+  const allOwners = await c.query(`
+    SELECT tablename, tableowner FROM pg_tables WHERE schemaname = 'auth' ORDER BY tablename
+  `);
+  console.log('\nAUTH TABLE OWNERS:');
+  allOwners.rows.forEach(r => console.log(`  ${r.tablename}: ${r.tableowner}`));
+  
+  // Check if handle_new_user can be called by the auth admin role
+  const funcOwner = await c.query(`
+    SELECT p.proname, pg_catalog.pg_get_userbyid(p.proowner) as owner, p.prosecdef
     FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE p.proname = 'handle_new_user'
   `);
-  console.log('\nHANDLE_NEW_USER FULL DEF:');
-  funcConfig.rows.forEach(r => {
-    console.log('  proconfig:', r.proconfig);
-    console.log('  funcdef:', r.funcdef);
-  });
+  console.log('\nHANDLE_NEW_USER OWNER:', JSON.stringify(funcOwner.rows));
   
-  // Check if there's a problem with the profiles table foreign key
-  const fks = await c.query(`
-    SELECT tc.constraint_name, tc.table_schema, tc.table_name, 
-           kcu.column_name, ccu.table_schema AS foreign_table_schema,
-           ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name
-    FROM information_schema.table_constraints AS tc
-    JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
-    JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
-    WHERE tc.constraint_type = 'FOREIGN KEY' AND (ccu.table_schema = 'auth' OR tc.table_schema = 'auth')
-    ORDER BY tc.table_name
+  // Check schema privileges for supabase_auth_admin
+  const schemaPrivs = await c.query(`
+    SELECT has_schema_privilege('supabase_auth_admin', 'auth', 'USAGE') as auth_usage,
+           has_schema_privilege('supabase_auth_admin', 'public', 'USAGE') as public_usage,
+           has_table_privilege('supabase_auth_admin', 'auth.users', 'SELECT') as users_select,
+           has_table_privilege('supabase_auth_admin', 'auth.users', 'INSERT') as users_insert,
+           has_table_privilege('supabase_auth_admin', 'auth.users', 'UPDATE') as users_update,
+           has_table_privilege('supabase_auth_admin', 'auth.users', 'DELETE') as users_delete
   `);
-  console.log('\nFK CONSTRAINTS REFERENCING AUTH:');
-  fks.rows.forEach(r => console.log(`  ${r.table_schema}.${r.table_name}.${r.column_name} -> ${r.foreign_table_schema}.${r.foreign_table_name}.${r.foreign_column_name} (${r.constraint_name})`));
+  console.log('\nSUPABASE_AUTH_ADMIN PRIVILEGES:', JSON.stringify(schemaPrivs.rows[0]));
+  
+  // Check if there's an issue with function search paths
+  const searchPath = await c.query("SHOW search_path");
+  console.log('\nSEARCH PATH:', searchPath.rows[0]?.search_path);
+  
+  // Try running handle_new_user as supabase_auth_admin would
+  // Check if the profiles table is accessible by supabase_auth_admin
+  const profilesPriv = await c.query(`
+    SELECT has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT') as can_insert,
+           has_table_privilege('supabase_auth_admin', 'public.profiles', 'SELECT') as can_select
+  `);
+  console.log('PROFILES PRIV FOR AUTH_ADMIN:', JSON.stringify(profilesPriv.rows[0]));
   
   await c.end();
   
-  // Check GoTrue health
-  const health = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/health');
-  console.log('\nHealth Status:', health.status);
-  const hb = await health.text();
-  console.log('Health:', hb);
-  
-  // Check GoTrue settings endpoint 
-  const settings = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/settings', {
+  // Health check with apikey
+  const health = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/health', {
     headers: {
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcXppem1nZW10a2l6YnZ0dXlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODAwNzIsImV4cCI6MjA4ODY1NjA3Mn0.on96vHcNkhIzZFTggMNX2A22p5vpzBIippQ6A19Pw1U'
     }
   });
-  console.log('\nSettings Status:', settings.status);
-  const sb = await settings.text();
-  console.log('Settings:', sb.substring(0, 500));
+  console.log('\nHealth Status:', health.status);
+  const hb = await health.text();
+  console.log('Health:', hb);
 }
 main().catch(e => { console.error(e.message); process.exit(1); });
