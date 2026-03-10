@@ -5,68 +5,98 @@ import PaymentMethodPieChart from "@/components/charts/PaymentMethodPieChart";
 import StockValueChart from "@/components/charts/StockValueChart";
 import SalesTrendHeatmap from "@/components/charts/SalesTrendHeatmap";
 import ProfitMarginChart from "@/components/charts/ProfitMarginChart";
-import DataTable from "@/components/common/DataTable";
-
-const debtRows = [
-  { customer: "Kamau", amount: "KES 3,400", days: 5 },
-  { customer: "Amina", amount: "KES 1,200", days: 28 },
-  { customer: "Wanjiku", amount: "KES 800", days: 65 },
-];
-
-const stockRows = [
-  { product: "Unga 2kg", qty: 50, cost: "KES 4,250", retail: "KES 5,000" },
-  { product: "Sugar 1kg", qty: 100, cost: "KES 8,000", retail: "KES 10,000" },
-];
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { formatCurrency } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Analytics = () => {
+  const { kpis, trend, topProducts, paymentBreakdown, heatmap, debtAging, stockValuation } = useAnalytics();
+  const k = kpis.data;
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-5">
-        <StatCard title="Today Revenue" value={45200} hint="↑ 12% vs yesterday" />
-        <StatCard title="Gross Profit" value={12400} hint="27.4% margin" />
-        <StatCard title="Units Sold" value="234 items" hint="8 txns today" />
-        <StatCard title="Active Debts" value={8300} hint="3 customers" />
-        <StatCard title="Low Stock" value="7 products" hint="Reorder needed" />
+        <StatCard title="Today Revenue" value={k?.today_revenue ?? 0} hint={k ? `${k.transaction_count} txns today` : "—"} />
+        <StatCard title="Gross Profit" value={k?.today_profit ?? 0} hint={k?.today_revenue ? `${((k.today_profit / k.today_revenue) * 100).toFixed(1)}% margin` : "—"} />
+        <StatCard title="Units Sold" value={k ? `${k.items_sold} items` : "—"} hint={k ? `${k.transaction_count} txns today` : "—"} />
+        <StatCard title="Active Debts" value={k?.active_debt ?? 0} hint={`${k?.debt_customer_count ?? 0} customers`} />
+        <StatCard title="Low Stock" value={k ? `${k.low_stock_count} products` : "—"} hint="Reorder needed" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <RevenueLineChart />
-        <SalesByProductChart />
+        <RevenueLineChart data={trend.data} loading={trend.isLoading} />
+        <SalesByProductChart data={topProducts.data} loading={topProducts.isLoading} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <PaymentMethodPieChart />
-        <StockValueChart />
-        <ProfitMarginChart />
+        <PaymentMethodPieChart data={paymentBreakdown.data} loading={paymentBreakdown.isLoading} />
+        <StockValueChart data={stockValuation.data} loading={stockValuation.isLoading} />
+        <ProfitMarginChart data={topProducts.data} loading={topProducts.isLoading} />
       </div>
 
-      <SalesTrendHeatmap />
+      <SalesTrendHeatmap data={heatmap.data} loading={heatmap.isLoading} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="card p-4">
           <p className="text-sm font-semibold mb-3">Debt Aging</p>
-          <DataTable
-            columns={[
-              { header: "Customer", accessor: "customer" },
-              { header: "Amount", accessor: "amount" },
-              { header: "Days Due", accessor: "days" },
-            ]}
-            data={debtRows}
-            emptyMessage="No debts"
-          />
+          {debtAging.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : !(debtAging.data ?? []).length ? (
+            <p className="text-sm text-slate-500">No debts</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-semibold">Bucket</th>
+                    <th className="text-right px-4 py-3 font-semibold">Amount</th>
+                    <th className="text-right px-4 py-3 font-semibold">Customers</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {debtAging.data!.map((row) => (
+                    <tr key={row.bucket}>
+                      <td className="px-4 py-3 text-slate-700">{row.bucket}</td>
+                      <td className="px-4 py-3 text-right font-medium text-red-600">{formatCurrency(row.total_amount)}</td>
+                      <td className="px-4 py-3 text-right text-slate-700">{row.customer_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+
         <div className="card p-4">
-          <p className="text-sm font-semibold mb-3">Stock Value Analysis</p>
-          <DataTable
-            columns={[
-              { header: "Product", accessor: "product" },
-              { header: "Qty", accessor: "qty" },
-              { header: "Cost Value", accessor: "cost" },
-              { header: "Sell Value", accessor: "retail" },
-            ]}
-            data={stockRows}
-            emptyMessage="No stock"
-          />
+          <p className="text-sm font-semibold mb-3">Stock Value (Top Items)</p>
+          {stockValuation.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : !(stockValuation.data ?? []).length ? (
+            <p className="text-sm text-slate-500">No stock</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-semibold">Product</th>
+                    <th className="text-right px-4 py-3 font-semibold">Qty</th>
+                    <th className="text-right px-4 py-3 font-semibold">Cost Value</th>
+                    <th className="text-right px-4 py-3 font-semibold">Retail Value</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {stockValuation.data!.slice(0, 10).map((row) => (
+                    <tr key={row.product_name}>
+                      <td className="px-4 py-3 text-slate-700">{row.product_name}</td>
+                      <td className="px-4 py-3 text-right text-slate-700">{row.stock_quantity}</td>
+                      <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(row.cost_value)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-slate-900">{formatCurrency(row.retail_value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
