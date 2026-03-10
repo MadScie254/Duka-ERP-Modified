@@ -10,8 +10,8 @@ import toast from "react-hot-toast";
 const Login = () => {
   const navigate = useNavigate();
   const { setSession, setUser, setProfile, setActiveShop, setShops } = useAuthStore();
-  const [email, setEmail] = useState("demo@dukaerp.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("dukatest2025@gmail.com");
+  const [password, setPassword] = useState("Password123!");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
