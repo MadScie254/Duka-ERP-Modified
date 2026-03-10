@@ -7,86 +7,86 @@ const c = new pg.Client({
 async function main() {
   await c.connect();
   
-  // Check table ownership of auth.users
-  const owner = await c.query(`
-    SELECT tableowner FROM pg_tables WHERE schemaname = 'auth' AND tablename = 'users'
-  `);
-  console.log('AUTH.USERS OWNER:', owner.rows[0]?.tableowner);
+  // Test running queries AS supabase_auth_admin
+  // GoTrue's first query on login is typically to look up the user
+  try {
+    await c.query("SET ROLE supabase_auth_admin");
+    console.log('Set role to supabase_auth_admin');
+    
+    // Try GoTrue's schema introspection query
+    const q1 = await c.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_schema = 'auth' AND table_name = 'users'
+    `);
+    console.log('Schema introspection OK:', q1.rows.length, 'columns');
+    
+    // Try to select from auth.users
+    const q2 = await c.query(`SELECT id, email FROM auth.users LIMIT 1`);
+    console.log('Select from auth.users OK:', JSON.stringify(q2.rows));
+    
+    // Try to read user by email (what GoTrue does on login)
+    const q3 = await c.query(`SELECT * FROM auth.users WHERE email = 'demo@dukaerp.com'`);
+    console.log('User lookup OK, rows:', q3.rows.length);
+    
+    // Try inserting into identities (what GoTrue does)
+    // Try the actual encryption function GoTrue uses
+    const q4 = await c.query(`SELECT gen_random_uuid()::text as test`);
+    console.log('gen_random_uuid OK:', q4.rows[0]?.test);
+    
+    // Try accessing the functions GoTrue might use
+    const q5 = await c.query(`SELECT current_setting('request.jwt.claims', true) as claims`);
+    console.log('jwt claims setting:', q5.rows[0]?.claims);
+    
+    // Check if GoTrue can access pg_crypto for password hashing
+    const q6 = await c.query(`SELECT crypt('test', gen_salt('bf')) as hash`);
+    console.log('crypt function OK:', q6.rows[0]?.hash?.substring(0, 10));
+    
+  } catch(e) {
+    console.log('ERROR as supabase_auth_admin:', e.message);
+  } finally {
+    await c.query("RESET ROLE");
+  }
   
-  // Check auth schema ownership
-  const schemaOwner = await c.query(`
-    SELECT nspname, pg_catalog.pg_get_userbyid(nspowner) as owner 
-    FROM pg_namespace WHERE nspname = 'auth'
-  `);
-  console.log('AUTH SCHEMA OWNER:', schemaOwner.rows[0]?.owner);
-  
-  // Check what the supabase_auth_admin role can do
-  const authAdminPrivs = await c.query(`
-    SELECT r.rolname, r.rolsuper, r.rolinherit, r.rolcreaterole, r.rolcreatedb,
-           r.rolcanlogin, r.rolconnlimit,
-           ARRAY(SELECT b.rolname 
-                 FROM pg_catalog.pg_auth_members m 
-                 JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid) 
-                 WHERE m.member = r.oid) as member_of
-    FROM pg_catalog.pg_roles r 
-    WHERE r.rolname = 'supabase_auth_admin'
-  `);
-  console.log('\nSUPABASE_AUTH_ADMIN:', JSON.stringify(authAdminPrivs.rows));
-  
-  // Check what supabase_auth_admin owns in auth schema
-  const authAdminOwned = await c.query(`
-    SELECT tablename FROM pg_tables WHERE schemaname = 'auth' AND tableowner = 'supabase_auth_admin'
-  `);
-  console.log('\nTABLES OWNED BY supabase_auth_admin:', authAdminOwned.rows.map(r => r.tablename).join(', '));
-  
-  // Check all table owners in auth schema
-  const allOwners = await c.query(`
-    SELECT tablename, tableowner FROM pg_tables WHERE schemaname = 'auth' ORDER BY tablename
-  `);
-  console.log('\nAUTH TABLE OWNERS:');
-  allOwners.rows.forEach(r => console.log(`  ${r.tablename}: ${r.tableowner}`));
-  
-  // Check if handle_new_user can be called by the auth admin role
-  const funcOwner = await c.query(`
-    SELECT p.proname, pg_catalog.pg_get_userbyid(p.proowner) as owner, p.prosecdef
-    FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE p.proname = 'handle_new_user'
-  `);
-  console.log('\nHANDLE_NEW_USER OWNER:', JSON.stringify(funcOwner.rows));
-  
-  // Check schema privileges for supabase_auth_admin
-  const schemaPrivs = await c.query(`
-    SELECT has_schema_privilege('supabase_auth_admin', 'auth', 'USAGE') as auth_usage,
-           has_schema_privilege('supabase_auth_admin', 'public', 'USAGE') as public_usage,
-           has_table_privilege('supabase_auth_admin', 'auth.users', 'SELECT') as users_select,
-           has_table_privilege('supabase_auth_admin', 'auth.users', 'INSERT') as users_insert,
-           has_table_privilege('supabase_auth_admin', 'auth.users', 'UPDATE') as users_update,
-           has_table_privilege('supabase_auth_admin', 'auth.users', 'DELETE') as users_delete
-  `);
-  console.log('\nSUPABASE_AUTH_ADMIN PRIVILEGES:', JSON.stringify(schemaPrivs.rows[0]));
-  
-  // Check if there's an issue with function search paths
-  const searchPath = await c.query("SHOW search_path");
-  console.log('\nSEARCH PATH:', searchPath.rows[0]?.search_path);
-  
-  // Try running handle_new_user as supabase_auth_admin would
-  // Check if the profiles table is accessible by supabase_auth_admin
-  const profilesPriv = await c.query(`
-    SELECT has_table_privilege('supabase_auth_admin', 'public.profiles', 'INSERT') as can_insert,
-           has_table_privilege('supabase_auth_admin', 'public.profiles', 'SELECT') as can_select
-  `);
-  console.log('PROFILES PRIV FOR AUTH_ADMIN:', JSON.stringify(profilesPriv.rows[0]));
+  // Now drop the trigger and test login again with a controlled test
+  console.log('\n--- Dropping trigger and testing login ---');
+  await c.query('DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users');
+  console.log('Trigger dropped');
   
   await c.end();
   
-  // Health check with apikey
-  const health = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/health', {
+  // Wait a second for GoTrue to pick up the change
+  await new Promise(r => setTimeout(r, 2000));
+  
+  // Test login
+  const resp = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/token?grant_type=password', {
+    method: 'POST',
     headers: {
+      'Content-Type': 'application/json',
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcXppem1nZW10a2l6YnZ0dXlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODAwNzIsImV4cCI6MjA4ODY1NjA3Mn0.on96vHcNkhIzZFTggMNX2A22p5vpzBIippQ6A19Pw1U'
-    }
+    },
+    body: JSON.stringify({ email: 'demo@dukaerp.com', password: 'password123' })
   });
-  console.log('\nHealth Status:', health.status);
-  const hb = await health.text();
-  console.log('Health:', hb);
+  console.log('Login Status:', resp.status);
+  const lb = await resp.text();
+  if (resp.status === 200) {
+    const data = JSON.parse(lb);
+    console.log('LOGIN SUCCESS! User:', data.user?.id);
+    console.log('Access token:', data.access_token?.substring(0, 30) + '...');
+  } else {
+    console.log('Login body:', lb);
+  }
+  
+  // Try signup with a brand new email
+  const resp2 = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/signup', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcXppem1nZW10a2l6YnZ0dXlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODAwNzIsImV4cCI6MjA4ODY1NjA3Mn0.on96vHcNkhIzZFTggMNX2A22p5vpzBIippQ6A19Pw1U'
+    },
+    body: JSON.stringify({ email: 'test-notrigger@example.com', password: 'Password123!' })
+  });
+  console.log('\nSignup Status:', resp2.status);
+  const sb = await resp2.text();
+  console.log('Signup body:', sb.substring(0, 500));
 }
 main().catch(e => { console.error(e.message); process.exit(1); });
