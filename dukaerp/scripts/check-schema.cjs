@@ -7,87 +7,48 @@ const c = new pg.Client({
 async function main() {
   await c.connect();
   
-  // 1. Confirm the new user's email so we can login
-  const newUser = await c.query(`
-    SELECT id, email FROM auth.users WHERE email = 'dukatest2025@gmail.com'
+  // Compare the working user and the broken demo user
+  const users = await c.query(`
+    SELECT id, email, aud, role, instance_id, 
+           raw_app_meta_data, raw_user_meta_data,
+           email_confirmed_at, confirmed_at,
+           is_sso_user, is_anonymous,
+           SUBSTRING(encrypted_password, 1, 4) as pw_algo
+    FROM auth.users 
+    WHERE email IN ('demo@dukaerp.com', 'dukatest2025@gmail.com')
+    ORDER BY email
   `);
-  console.log('New user:', JSON.stringify(newUser.rows[0]));
   
-  if (newUser.rows[0]) {
-    await c.query(`
-      UPDATE auth.users SET 
-        email_confirmed_at = NOW(),
-        updated_at = NOW()
-      WHERE email = 'dukatest2025@gmail.com'
-    `);
-    console.log('Email confirmed for new user');
-  }
+  users.rows.forEach(u => {
+    console.log(`\n=== ${u.email} ===`);
+    console.log('  id:', u.id);
+    console.log('  aud:', u.aud);
+    console.log('  role:', u.role);
+    console.log('  instance_id:', u.instance_id);
+    console.log('  raw_app_meta_data:', JSON.stringify(u.raw_app_meta_data));
+    console.log('  raw_user_meta_data:', JSON.stringify(u.raw_user_meta_data));
+    console.log('  email_confirmed_at:', u.email_confirmed_at);
+    console.log('  confirmed_at:', u.confirmed_at);
+    console.log('  is_sso_user:', u.is_sso_user);
+    console.log('  is_anonymous:', u.is_anonymous);
+    console.log('  pw_algo:', u.pw_algo);
+  });
   
-  // 2. Fix the demo user's identity (it was deleted)
-  const demoIdent = await c.query(`
-    SELECT id FROM auth.identities WHERE user_id = '00000000-0000-0000-0000-000000000099'
+  // Compare identities
+  const idents = await c.query(`
+    SELECT user_id, provider, provider_id, identity_data
+    FROM auth.identities 
+    WHERE user_id IN ('00000000-0000-0000-0000-000000000099', '3a636a38-38a3-4485-af73-8e779906b0b7')
+    ORDER BY user_id
   `);
-  console.log('Demo user identities:', demoIdent.rows.length);
-  
-  if (demoIdent.rows.length === 0) {
-    await c.query(`
-      INSERT INTO auth.identities (
-        id, user_id, provider, provider_id, identity_data, 
-        last_sign_in_at, created_at, updated_at
-      ) VALUES (
-        gen_random_uuid(),
-        '00000000-0000-0000-0000-000000000099',
-        'email',
-        '00000000-0000-0000-0000-000000000099',
-        '{"sub": "00000000-0000-0000-0000-000000000099", "email": "demo@dukaerp.com", "email_verified": true}'::jsonb,
-        NOW(), NOW(), NOW()
-      )
-    `);
-    console.log('Demo user identity re-created');
-  }
+  console.log('\n--- IDENTITIES ---');
+  idents.rows.forEach(i => {
+    console.log(`  user_id: ${i.user_id}`);
+    console.log(`  provider: ${i.provider}, provider_id: ${i.provider_id}`);
+    console.log(`  identity_data: ${JSON.stringify(i.identity_data)}`);
+    console.log('');
+  });
   
   await c.end();
-  
-  // Wait for GoTrue to see the changes
-  await new Promise(r => setTimeout(r, 1500));
-  
-  // 3. Try login with NEW user
-  console.log('\n--- Login with new user ---');
-  const resp1 = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/token?grant_type=password', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcXppem1nZW10a2l6YnZ0dXlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODAwNzIsImV4cCI6MjA4ODY1NjA3Mn0.on96vHcNkhIzZFTggMNX2A22p5vpzBIippQ6A19Pw1U'
-    },
-    body: JSON.stringify({ email: 'dukatest2025@gmail.com', password: 'Password123!' })
-  });
-  console.log('New user login status:', resp1.status);
-  const lb1 = await resp1.text();
-  if (resp1.status === 200) {
-    const data = JSON.parse(lb1);
-    console.log('NEW USER LOGIN SUCCESS! User:', data.user?.id);
-    console.log('Token:', data.access_token?.substring(0, 40) + '...');
-  } else {
-    console.log('New user login response:', lb1.substring(0, 300));
-  }
-  
-  // 4. Try login with demo user  
-  console.log('\n--- Login with demo user ---');
-  const resp2 = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/token?grant_type=password', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcXppem1nZW10a2l6YnZ0dXlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODAwNzIsImV4cCI6MjA4ODY1NjA3Mn0.on96vHcNkhIzZFTggMNX2A22p5vpzBIippQ6A19Pw1U'
-    },
-    body: JSON.stringify({ email: 'demo@dukaerp.com', password: 'password123' })
-  });
-  console.log('Demo user login status:', resp2.status);
-  const lb2 = await resp2.text();
-  if (resp2.status === 200) {
-    const data = JSON.parse(lb2);
-    console.log('DEMO USER LOGIN SUCCESS! User:', data.user?.id);
-  } else {
-    console.log('Demo user login response:', lb2.substring(0, 300));
-  }
 }
 main().catch(e => { console.error('FATAL:', e.message, e.stack); process.exit(1); });
