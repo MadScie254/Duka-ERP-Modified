@@ -59,8 +59,8 @@ const SalesByProductChart = ({ data = [], loading = false }: Props) => {
             <XAxis type="number" hide={metric === "margin"} />
             <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 12 }} />
             <Tooltip
-              formatter={(value: number) =>
-                metric === "margin" ? `${value}%` : `KES ${value.toLocaleString("en-KE")}`}
+              formatter={(value) =>
+                metric === "margin" ? `${value}%` : `KES ${Number(value).toLocaleString("en-KE")}`}
             />
             <Legend />
             <Bar

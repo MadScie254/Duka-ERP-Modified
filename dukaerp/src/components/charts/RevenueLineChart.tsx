@@ -65,7 +65,7 @@ const RevenueLineChart = ({ data = [], loading = false }: Props) => {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <YAxis tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={(v: number) => `KES ${v.toLocaleString("en-KE")}`} />
+            <Tooltip formatter={(v) => `KES ${Number(v).toLocaleString("en-KE")}`} />
             <Legend />
             <ReferenceLine y={avgRevenue} stroke="#94a3b8" strokeDasharray="5 5" label="Avg" />
             <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#22c55e" fill="#22c55e33" strokeWidth={2} />

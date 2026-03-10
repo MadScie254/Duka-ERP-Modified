@@ -16,10 +16,10 @@ const Analytics = () => {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-5">
-        <StatCard title="Today Revenue" value={k?.today_revenue ?? 0} hint={k ? `${k.transaction_count} txns today` : "—"} />
-        <StatCard title="Gross Profit" value={k?.today_profit ?? 0} hint={k?.today_revenue ? `${((k.today_profit / k.today_revenue) * 100).toFixed(1)}% margin` : "—"} />
-        <StatCard title="Units Sold" value={k ? `${k.items_sold} items` : "—"} hint={k ? `${k.transaction_count} txns today` : "—"} />
-        <StatCard title="Active Debts" value={k?.active_debt ?? 0} hint={`${k?.debt_customer_count ?? 0} customers`} />
+        <StatCard title="Today Revenue" value={k?.revenue ?? 0} hint={k ? `${k.transaction_count} txns today` : "—"} />
+        <StatCard title="Gross Profit" value={k?.profit ?? 0} hint={k?.revenue ? `${((k.profit / k.revenue) * 100).toFixed(1)}% margin` : "—"} />
+        <StatCard title="Units Sold" value={k ? `${k.units_sold} items` : "—"} hint={k ? `${k.transaction_count} txns today` : "—"} />
+        <StatCard title="Active Debts" value={k?.active_debts ?? 0} hint="Outstanding" />
         <StatCard title="Low Stock" value={k ? `${k.low_stock_count} products` : "—"} hint="Reorder needed" />
       </div>
 
@@ -50,15 +50,15 @@ const Analytics = () => {
                   <tr>
                     <th className="text-left px-4 py-3 font-semibold">Bucket</th>
                     <th className="text-right px-4 py-3 font-semibold">Amount</th>
-                    <th className="text-right px-4 py-3 font-semibold">Customers</th>
+                    <th className="text-right px-4 py-3 font-semibold">Oldest (days)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {debtAging.data!.map((row) => (
                     <tr key={row.bucket}>
                       <td className="px-4 py-3 text-slate-700">{row.bucket}</td>
-                      <td className="px-4 py-3 text-right font-medium text-red-600">{formatCurrency(row.total_amount)}</td>
-                      <td className="px-4 py-3 text-right text-slate-700">{row.customer_count}</td>
+                      <td className="px-4 py-3 text-right font-medium text-red-600">{formatCurrency(row.total_debt)}</td>
+                      <td className="px-4 py-3 text-right text-slate-700">{row.oldest_days}d</td>
                     </tr>
                   ))}
                 </tbody>

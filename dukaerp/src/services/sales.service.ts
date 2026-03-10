@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Sale, SaleInsert, SaleWithItems, SaleItem, PaymentMethod } from "@/types";
+import type { Sale, SaleInsert, SaleWithItems, PaymentMethod } from "@/types";
 
 export interface CreateSalePayload {
   shop_id: string;

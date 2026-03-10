@@ -35,7 +35,7 @@ const PaymentMethodPieChart = ({ data = [], loading = false }: Props) => {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(v: number) => `KES ${v.toLocaleString("en-KE")}`} />
+            <Tooltip formatter={(v) => `KES ${Number(v).toLocaleString("en-KE")}`} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>

@@ -57,7 +57,7 @@ const Settings = () => {
         </div>
         <div className="space-y-1">
           <Label>Plan</Label>
-          <Input value={activeShop?.plan ?? "free"} disabled />
+          <Input value="free" disabled />
         </div>
       </div>
     </div>

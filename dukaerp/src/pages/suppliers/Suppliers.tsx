@@ -17,10 +17,10 @@ const Suppliers = () => {
     createSupplier.mutate(
       {
         name: form.name,
-        phone: form.phone || undefined,
-        email: form.email || undefined,
-        contact_person: form.contact_person || undefined,
-        notes: form.notes || undefined,
+        phone: form.phone || null,
+        email: form.email || null,
+        contact_person: form.contact_person || null,
+        notes: form.notes || null,
       },
       {
         onSuccess: () => { toast.success("Supplier added"); setShowForm(false); setForm({ name: "", phone: "", email: "", contact_person: "", notes: "" }); },
