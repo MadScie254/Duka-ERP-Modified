@@ -28,15 +28,15 @@ export function useSales() {
     },
   });
 
-  const voidSale = useMutation({
-    mutationFn: (id: string) => salesService.voidSale(id),
+  const refundSale = useMutation({
+    mutationFn: (id: string) => salesService.refundSale(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesKeys.list(shopId) });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.products(shopId) });
     },
   });
 
-  return { sales, createSale, voidSale };
+  return { sales, createSale, refundSale };
 }
 
 export function useSaleDetail(id: string) {

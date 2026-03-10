@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { inventoryService } from "@/services/inventory.service";
 import { useAuthStore } from "@/store/authStore";
 import { queryClient } from "@/lib/queryClient";
-import type { ProductInsert, ProductUpdate, AdjustmentReason } from "@/types";
+import type { ProductInsert, ProductUpdate, MovementType } from "@/types";
 
 export const inventoryKeys = {
   products: (shopId: string) => ["products", shopId] as const,
@@ -43,14 +43,14 @@ export function useInventory() {
   });
 
   const adjustStock = useMutation({
-    mutationFn: (payload: { product_id: string; previous_quantity: number; new_quantity: number; reason: AdjustmentReason; notes?: string; adjusted_by?: string }) =>
+    mutationFn: (payload: { product_id: string; previous_quantity: number; new_quantity: number; type: MovementType; notes?: string; created_by?: string }) =>
       inventoryService.adjustStock({ ...payload, shop_id: shopId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: inventoryKeys.products(shopId) }),
   });
 
   const createCategory = useMutation({
-    mutationFn: ({ name, description }: { name: string; description?: string }) =>
-      inventoryService.createCategory(shopId, name, description),
+    mutationFn: ({ name, color }: { name: string; color?: string }) =>
+      inventoryService.createCategory(shopId, name, color),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: inventoryKeys.categories(shopId) }),
   });
 

@@ -6,6 +6,7 @@ import type { ExpenseInsert, ExpenseUpdate } from "@/types";
 
 export const expenseKeys = {
   list: (shopId: string) => ["expenses", shopId] as const,
+  categories: (shopId: string) => ["expense-categories", shopId] as const,
 };
 
 export function useExpenses() {
@@ -14,6 +15,12 @@ export function useExpenses() {
   const expenses = useQuery({
     queryKey: expenseKeys.list(shopId),
     queryFn: () => expensesService.listExpenses(shopId),
+    enabled: !!shopId,
+  });
+
+  const expenseCategories = useQuery({
+    queryKey: expenseKeys.categories(shopId),
+    queryFn: () => expensesService.listCategories(shopId),
     enabled: !!shopId,
   });
 
@@ -34,5 +41,5 @@ export function useExpenses() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: expenseKeys.list(shopId) }),
   });
 
-  return { expenses, createExpense, updateExpense, deleteExpense };
+  return { expenses, expenseCategories, createExpense, updateExpense, deleteExpense };
 }
