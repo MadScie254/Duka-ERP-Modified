@@ -2,28 +2,30 @@ import React from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/common/EmptyState";
-
-const mockProducts = Array.from({ length: 10 }).map((_, i) => ({
-  name: `Product ${i + 1}`,
-  revenue: Math.round(20000 + Math.random() * 15000),
-  units: Math.round(30 + Math.random() * 70),
-  margin: Math.round(10 + Math.random() * 40),
-}));
+import type { TopProduct } from "@/types";
 
 type Metric = "revenue" | "units" | "margin";
 
-const SalesByProductChart = ({ loading = false }: { loading?: boolean }) => {
+interface Props {
+  data?: TopProduct[];
+  loading?: boolean;
+}
+
+const SalesByProductChart = ({ data = [], loading = false }: Props) => {
   const [metric, setMetric] = React.useState<Metric>("revenue");
 
   if (loading) return <Skeleton className="h-64 w-full" />;
-  if (!mockProducts.length)
+  if (!data.length)
     return <EmptyState title="No product performance yet" description="Add products and record sales to see trends." />;
 
-  const dataKeyMap = {
-    revenue: "Revenue",
-    units: "Units",
-    margin: "Margin %",
-  };
+  const chartData = data.map((p) => ({
+    name: p.product_name.length > 20 ? p.product_name.slice(0, 18) + "…" : p.product_name,
+    revenue: p.total_revenue,
+    units: p.total_units,
+    margin: Math.round(p.margin_pct),
+  }));
+
+  const dataKeyMap = { revenue: "Revenue", units: "Units", margin: "Margin %" };
 
   return (
     <div className="card p-4 md:p-6 space-y-4">
@@ -33,13 +35,11 @@ const SalesByProductChart = ({ loading = false }: { loading?: boolean }) => {
           <p className="text-xs text-slate-500">By revenue, units or margin</p>
         </div>
         <div className="flex gap-2 text-xs">
-          {(
-            [
-              { key: "revenue", label: "Revenue" },
-              { key: "units", label: "Units" },
-              { key: "margin", label: "Margin" },
-            ] as const
-          ).map((opt) => (
+          {([
+            { key: "revenue" as const, label: "Revenue" },
+            { key: "units" as const, label: "Units" },
+            { key: "margin" as const, label: "Margin" },
+          ]).map((opt) => (
             <button
               key={opt.key}
               onClick={() => setMetric(opt.key)}
@@ -54,13 +54,13 @@ const SalesByProductChart = ({ loading = false }: { loading?: boolean }) => {
       </div>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={mockProducts} layout="vertical" margin={{ left: 50 }}>
+          <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis type="number" hide={metric === "margin"} />
             <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 12 }} />
             <Tooltip
-              formatter={((value: unknown) =>
-                metric === "margin" ? `${value}%` : `KES ${Number(value || 0).toLocaleString("en-KE")}`) as any}
+              formatter={(value: number) =>
+                metric === "margin" ? `${value}%` : `KES ${value.toLocaleString("en-KE")}`}
             />
             <Legend />
             <Bar
