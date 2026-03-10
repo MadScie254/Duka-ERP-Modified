@@ -565,30 +565,36 @@ async function seed() {
   // ============================================================
   // SAMPLE SALES (last 30 days mock data)
   // ============================================================
+  console.log('Starting sales generation...');
   // Get product IDs for generating sale items
   const prodRows = await client.query(`SELECT id, name, cost_price, selling_price FROM products WHERE shop_id = $1 LIMIT 200`, [DEMO_SHOP_ID]);
   const prods = prodRows.rows;
+  console.log(`Found ${prods.length} products for sale generation`);
   
   const custRows = await client.query(`SELECT id FROM customers WHERE shop_id = $1`, [DEMO_SHOP_ID]);
   const custIds = custRows.rows.map(r => r.id);
+  console.log(`Found ${custIds.length} customers`);
 
   const paymentMethods = ['cash', 'mpesa', 'cash', 'mpesa', 'card', 'cash', 'mpesa', 'credit'];
   let saleCount = 0;
 
+  // Disable stock deduction trigger during seeding for performance
+  await client.query(`ALTER TABLE sale_items DISABLE TRIGGER ALL`);
+
   for (let daysAgo = 29; daysAgo >= 0; daysAgo--) {
-    const salesPerDay = 5 + Math.floor(Math.random() * 10); // 5-14 sales per day
+    const salesPerDay = 3 + Math.floor(Math.random() * 5); // 3-7 sales per day
     for (let s = 0; s < salesPerDay; s++) {
-      const hour = 7 + Math.floor(Math.random() * 12); // 7am-7pm
+      const hour = 7 + Math.floor(Math.random() * 12);
       const minute = Math.floor(Math.random() * 60);
       const saleDate = new Date();
       saleDate.setDate(saleDate.getDate() - daysAgo);
       saleDate.setHours(hour, minute, 0, 0);
 
-      const itemCount = 1 + Math.floor(Math.random() * 6);
+      const itemCount = 1 + Math.floor(Math.random() * 4);
       const selectedProducts = [];
       for (let i = 0; i < itemCount; i++) {
         const p = prods[Math.floor(Math.random() * prods.length)];
-        const qty = 1 + Math.floor(Math.random() * 4);
+        const qty = 1 + Math.floor(Math.random() * 3);
         selectedProducts.push({ ...p, qty });
       }
 
@@ -610,13 +616,19 @@ async function seed() {
 
         const saleId = saleRes.rows[0].id;
 
+        // Batch insert all sale items
+        const itemValues = [];
+        const itemParams = [];
+        let paramIdx = 1;
         for (const sp of selectedProducts) {
           const lineTotal = parseFloat(sp.selling_price) * sp.qty;
-          await client.query(`
-            INSERT INTO sale_items (sale_id, product_id, product_name, quantity, unit_price, cost_price, line_total)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-          `, [saleId, sp.id, sp.name, sp.qty, sp.selling_price, sp.cost_price, lineTotal]);
+          itemValues.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
+          itemParams.push(saleId, sp.id, sp.name, sp.qty, sp.selling_price, sp.cost_price, lineTotal);
         }
+        await client.query(`
+          INSERT INTO sale_items (sale_id, product_id, product_name, quantity, unit_price, cost_price, line_total)
+          VALUES ${itemValues.join(', ')}
+        `, itemParams);
 
         // Create payment record
         await client.query(`
@@ -636,10 +648,14 @@ async function seed() {
 
         saleCount++;
       } catch (err) {
-        // skip individual failures 
+        if (saleCount < 3) console.error(`Sale error: ${err.message}`);
       }
     }
+    if (daysAgo % 10 === 0) console.log(`  Day -${daysAgo} done (${saleCount} sales so far)`);
   }
+
+  // Re-enable triggers
+  await client.query(`ALTER TABLE sale_items ENABLE TRIGGER ALL`);
   console.log(`${saleCount} sales with items inserted`);
 
   // Update customer totals
