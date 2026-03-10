@@ -682,3 +682,39 @@ USING (EXISTS (SELECT 1 FROM sales s WHERE s.id = sale_id AND user_owns_shop(s.s
 -- Debt payments: accessible through debt's shop
 CREATE POLICY "Debt payments access" ON debt_payments FOR ALL 
 USING (EXISTS (SELECT 1 FROM debt_records d WHERE d.id = debt_id AND user_owns_shop(d.shop_id)));
+
+-- ============================================================
+-- PURCHASE ORDERS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+  po_number TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','partial','received','cancelled')),
+  total NUMERIC(12,2) DEFAULT 0,
+  notes TEXT,
+  expected_date DATE,
+  received_date DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_po_shop ON purchase_orders(shop_id);
+
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_order_id UUID NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_cost NUMERIC(12,2) NOT NULL,
+  received_qty INTEGER DEFAULT 0,
+  total NUMERIC(12,2) NOT NULL
+);
+
+ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purchase_order_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Shop owner access" ON purchase_orders FOR ALL USING (user_owns_shop(shop_id));
+CREATE POLICY "PO items access" ON purchase_order_items FOR ALL 
+USING (EXISTS (SELECT 1 FROM purchase_orders po WHERE po.id = purchase_order_id AND user_owns_shop(po.shop_id)));
