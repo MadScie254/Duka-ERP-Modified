@@ -30,6 +30,7 @@ export interface Database {
         };
         Insert: { id: string; full_name?: string; phone?: string | null; avatar_url?: string | null; plan?: PlanType };
         Update: Partial<Omit<Database['public']['Tables']['profiles']['Row'], 'id'>>;
+        Relationships: [];
       };
       shops: {
         Row: {
@@ -49,6 +50,7 @@ export interface Database {
         };
         Insert: { owner_id: string; name: string; business_type?: string; location?: string; phone?: string; email?: string; kra_pin?: string; logo_url?: string; currency?: string; timezone?: string };
         Update: Partial<Omit<Database['public']['Tables']['shops']['Row'], 'id'>>;
+        Relationships: [];
       };
       categories: {
         Row: {
@@ -60,6 +62,7 @@ export interface Database {
         };
         Insert: { shop_id: string; name: string; description?: string | null };
         Update: { name?: string; description?: string | null };
+        Relationships: [];
       };
       products: {
         Row: {
@@ -82,6 +85,7 @@ export interface Database {
         };
         Insert: { shop_id: string; name: string; cost_price: number; selling_price: number; category_id?: string | null; sku?: string | null; barcode?: string | null; description?: string | null; unit?: string; stock_quantity?: number; reorder_level?: number; is_active?: boolean; image_url?: string | null };
         Update: Partial<Omit<Database['public']['Tables']['products']['Row'], 'id' | 'shop_id'>>;
+        Relationships: [];
       };
       customers: {
         Row: {
@@ -100,6 +104,7 @@ export interface Database {
         };
         Insert: { shop_id: string; name: string; phone?: string | null; email?: string | null; address?: string | null; notes?: string | null };
         Update: Partial<Omit<Database['public']['Tables']['customers']['Row'], 'id' | 'shop_id'>>;
+        Relationships: [];
       };
       suppliers: {
         Row: {
@@ -116,6 +121,7 @@ export interface Database {
         };
         Insert: { shop_id: string; name: string; phone?: string | null; email?: string | null; address?: string | null; notes?: string | null; contact_person?: string | null };
         Update: Partial<Omit<Database['public']['Tables']['suppliers']['Row'], 'id' | 'shop_id'>>;
+        Relationships: [];
       };
       sales: {
         Row: {
@@ -137,6 +143,7 @@ export interface Database {
         };
         Insert: { shop_id: string; receipt_number: string; subtotal: number; total_amount: number; profit_amount: number; customer_id?: string | null; discount_amount?: number; tax_amount?: number; status?: SaleStatus; payment_method?: PaymentMethod; notes?: string | null; cashier_id?: string | null };
         Update: Partial<Omit<Database['public']['Tables']['sales']['Row'], 'id' | 'shop_id'>>;
+        Relationships: [];
       };
       sale_items: {
         Row: {
@@ -153,6 +160,7 @@ export interface Database {
         };
         Insert: { sale_id: string; product_id: string; product_name: string; quantity: number; unit_price: number; line_total: number; cost_price?: number; discount?: number };
         Update: Partial<Omit<Database['public']['Tables']['sale_items']['Row'], 'id'>>;
+        Relationships: [];
       };
       payments: {
         Row: {
@@ -169,6 +177,7 @@ export interface Database {
         };
         Insert: { shop_id: string; amount: number; method: PaymentMethod; sale_id?: string | null; customer_id?: string | null; status?: PaymentStatus; reference?: string | null; notes?: string | null };
         Update: Partial<Omit<Database['public']['Tables']['payments']['Row'], 'id'>>;
+        Relationships: [];
       };
       expenses: {
         Row: {
@@ -186,6 +195,7 @@ export interface Database {
         };
         Insert: { shop_id: string; description: string; amount: number; category?: string; payment_method?: PaymentMethod; receipt_url?: string | null; notes?: string | null; incurred_at?: string };
         Update: Partial<Omit<Database['public']['Tables']['expenses']['Row'], 'id' | 'shop_id'>>;
+        Relationships: [];
       };
       stock_adjustments: {
         Row: {
@@ -201,6 +211,7 @@ export interface Database {
         };
         Insert: { shop_id: string; product_id: string; previous_quantity: number; new_quantity: number; reason: AdjustmentReason; notes?: string | null; adjusted_by?: string | null };
         Update: never;
+        Relationships: [];
       };
       mpesa_transactions: {
         Row: {
@@ -220,6 +231,7 @@ export interface Database {
         };
         Insert: { shop_id: string; phone: string; amount: number; payment_id?: string | null; status?: MpesaStatus };
         Update: Partial<Omit<Database['public']['Tables']['mpesa_transactions']['Row'], 'id'>>;
+        Relationships: [];
       };
       debt_records: {
         Row: {
@@ -237,6 +249,7 @@ export interface Database {
         };
         Insert: { shop_id: string; customer_id: string; original_amount: number; remaining_amount: number; sale_id?: string | null; due_date?: string | null; notes?: string | null };
         Update: Partial<Omit<Database['public']['Tables']['debt_records']['Row'], 'id' | 'shop_id'>>;
+        Relationships: [];
       };
       debt_payments: {
         Row: {
@@ -249,6 +262,7 @@ export interface Database {
         };
         Insert: { debt_id: string; amount: number; method?: PaymentMethod; notes?: string | null };
         Update: never;
+        Relationships: [];
       };
       purchase_orders: {
         Row: {
@@ -266,6 +280,7 @@ export interface Database {
         };
         Insert: { shop_id: string; supplier_id: string; po_number: string; status?: POStatus; total?: number; notes?: string | null; expected_date?: string | null };
         Update: Partial<Omit<Database['public']['Tables']['purchase_orders']['Row'], 'id' | 'shop_id'>>;
+        Relationships: [];
       };
       purchase_order_items: {
         Row: {
@@ -279,6 +294,7 @@ export interface Database {
         };
         Insert: { purchase_order_id: string; product_id: string; quantity: number; unit_cost: number; total: number; received_qty?: number };
         Update: Partial<Omit<Database['public']['Tables']['purchase_order_items']['Row'], 'id'>>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -324,6 +340,7 @@ export interface Database {
       adjustment_reason: AdjustmentReason;
       mpesa_status: MpesaStatus;
     };
+    CompositeTypes: Record<string, never>;
   };
 }
 
