@@ -2,25 +2,23 @@ import React from "react";
 import * as d3 from "d3";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/common/EmptyState";
+import type { SalesHeatmapRow } from "@/types";
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const hours = Array.from({ length: 24 }).map((_, i) => i);
-const mock = dayLabels.flatMap((label, dayIndex) =>
-  hours.map((hour) => ({
-    dayLabel: label,
-    dayIndex,
-    hour,
-    sales_count: Math.round(Math.random() * 20),
-    revenue: Math.round(500 + Math.random() * 3000),
-  }))
-);
 
-const color = d3.scaleLinear<string>().domain([0, 20]).range(["#E0F7FA", "#006064"]);
+interface Props {
+  data?: SalesHeatmapRow[];
+  loading?: boolean;
+}
 
-const SalesTrendHeatmap = ({ loading = false }: { loading?: boolean }) => {
+const SalesTrendHeatmap = ({ data = [], loading = false }: Props) => {
   if (loading) return <Skeleton className="h-64 w-full" />;
-  if (!mock.length)
+  if (!data.length)
     return <EmptyState title="No sales yet" description="Sales heatmap will appear after transactions." />;
+
+  const maxCount = Math.max(...data.map((d) => d.sale_count), 1);
+  const color = d3.scaleLinear<string>().domain([0, maxCount]).range(["#E0F7FA", "#006064"]);
 
   return (
     <div className="card p-4 space-y-4">
@@ -36,17 +34,19 @@ const SalesTrendHeatmap = ({ loading = false }: { loading?: boolean }) => {
               {h}
             </div>
           ))}
-          {dayLabels.map((label) => (
+          {dayLabels.map((label, dayIndex) => (
             <React.Fragment key={label}>
               <div className="text-xs font-semibold text-slate-600 flex items-center">{label}</div>
               {hours.map((hour) => {
-                const cell = mock.find((c) => c.dayLabel === label && c.hour === hour)!;
+                const cell = data.find((c) => c.day_of_week === dayIndex && c.hour_of_day === hour);
+                const count = cell?.sale_count ?? 0;
+                const revenue = cell?.total_revenue ?? 0;
                 return (
                   <div
                     key={`${label}-${hour}`}
-                    title={`${label} ${hour}:00 - ${cell.sales_count} sales, KES ${cell.revenue.toLocaleString("en-KE")}`}
+                    title={`${label} ${hour}:00 - ${count} sales, KES ${revenue.toLocaleString("en-KE")}`}
                     className="h-6 w-full"
-                    style={{ backgroundColor: color(cell.sales_count) }}
+                    style={{ backgroundColor: color(count) }}
                   />
                 );
               })}
