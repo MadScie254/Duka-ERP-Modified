@@ -9,9 +9,9 @@ import toast from "react-hot-toast";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { setSession, setUser } = useAuthStore();
+  const { setSession, setUser, setProfile, setActiveShop, setShops } = useAuthStore();
   const [email, setEmail] = useState("demo@dukaerp.com");
-  const [password, setPassword] = useState("password");
+  const [password, setPassword] = useState("password123");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -20,14 +20,33 @@ const Login = () => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       toast.error(error.message);
-    } else if (data.session) {
+      setLoading(false);
+      return;
+    }
+
+    if (data.session) {
       setSession(data.session);
       setUser(data.user);
+
+      // Load profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+      if (profile) setProfile(profile);
+
+      // Load shops
+      const { data: shops } = await supabase
+        .from("shops")
+        .select("*")
+        .eq("owner_id", data.user.id);
+      if (shops && shops.length > 0) {
+        setShops(shops);
+        setActiveShop(shops[0]);
+      }
+
       toast.success("Welcome back!");
-      navigate("/dashboard");
-    } else {
-      toast("Using mock session for dev");
-      setSession({} as any);
       navigate("/dashboard");
     }
     setLoading(false);
