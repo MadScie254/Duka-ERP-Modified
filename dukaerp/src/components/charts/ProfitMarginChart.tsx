@@ -23,7 +23,7 @@ const ProfitMarginChart = ({ loading = false }: { loading?: boolean }) => {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
             <YAxis unit="%" />
-            <Tooltip formatter={(v: number | string) => `${v}%`} />
+            <Tooltip formatter={((v: unknown) => `${v}%`) as any} />
             <Line type="monotone" dataKey="margin" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>

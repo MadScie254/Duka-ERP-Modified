@@ -1,9 +1,6 @@
-import { supabase } from "@/lib/supabase";
-
 export const analyticsService = {
-  async getTodayKPIs(shopId: string) {
+  async getTodayKPIs(_shopId: string) {
     try {
-      // TODO: replace with RPC
       return {
         revenue: 45200,
         profit: 12400,
@@ -15,9 +12,8 @@ export const analyticsService = {
       throw error;
     }
   },
-  async getRevenueTrend(shopId: string, days: number) {
+  async getRevenueTrend(_shopId: string, days: number) {
     try {
-      // TODO: query daily_sales_summary view
       return Array.from({ length: days }).map((_, i) => ({
         date: new Date(Date.now() - i * 86400000).toISOString(),
         revenue: Math.round(50000 + Math.random() * 20000),
@@ -29,9 +25,8 @@ export const analyticsService = {
       throw error;
     }
   },
-  async getTopProducts(shopId: string, limit = 10, metric: "revenue" | "units" | "margin" = "revenue") {
+  async getTopProducts(_shopId: string, limit = 10, metric: "revenue" | "units" | "margin" = "revenue") {
     try {
-      // TODO: pull from product_performance view
       return Array.from({ length: limit }).map((_, i) => ({
         name: `Product ${i + 1}`,
         revenue: Math.round(20000 + Math.random() * 15000),
@@ -44,9 +39,8 @@ export const analyticsService = {
       throw error;
     }
   },
-  async getPaymentMethodBreakdown(shopId: string, days: number) {
+  async getPaymentMethodBreakdown(_shopId: string, _days: number) {
     try {
-      // TODO: use payment_method_summary view
       return [
         { method: "cash", total_amount: 45 },
         { method: "mpesa", total_amount: 40 },
@@ -58,16 +52,15 @@ export const analyticsService = {
       throw error;
     }
   },
-  async getSalesHeatmap(shopId: string, days = 90) {
+  async getSalesHeatmap(_shopId: string, _days = 90) {
     try {
-      // TODO: aggregate by hour/day
       return [];
     } catch (error) {
       console.error("getSalesHeatmap", error);
       throw error;
     }
   },
-  async getDebtAging(shopId: string) {
+  async getDebtAging(_shopId: string) {
     try {
       return [];
     } catch (error) {
@@ -75,7 +68,7 @@ export const analyticsService = {
       throw error;
     }
   },
-  async getStockValuation(shopId: string) {
+  async getStockValuation(_shopId: string) {
     try {
       return [];
     } catch (error) {

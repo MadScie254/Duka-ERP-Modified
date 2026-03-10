@@ -6,7 +6,6 @@ import ProfitMarginChart from "@/components/charts/ProfitMarginChart";
 import StockValueChart from "@/components/charts/StockValueChart";
 import SalesTrendHeatmap from "@/components/charts/SalesTrendHeatmap";
 import { ShoppingBag, TrendingUp, Package, Wallet, BellRing } from "lucide-react";
-import React from "react";
 
 const Dashboard = () => {
   return (

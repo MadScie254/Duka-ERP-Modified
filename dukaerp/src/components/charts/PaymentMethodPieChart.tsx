@@ -29,7 +29,7 @@ const PaymentMethodPieChart = ({ loading = false }: { loading?: boolean }) => {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value: number | string) => `${value}%`} />
+            <Tooltip formatter={((value: unknown) => `${value}%`) as any} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>

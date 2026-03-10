@@ -24,7 +24,7 @@ const StockValueChart = ({ loading = false }: { loading?: boolean }) => {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
             <YAxis tickFormatter={(v) => `KES ${Number(v) / 1000}k`} />
-            <Tooltip formatter={(v: number | string) => `KES ${Number(v).toLocaleString("en-KE")}`} />
+            <Tooltip formatter={((v: unknown) => `KES ${Number(v || 0).toLocaleString("en-KE")}`) as any} />
             <Legend />
             <Bar dataKey="cost_value" name="Cost" fill="#94a3b8" radius={[6, 6, 0, 0]} />
             <Bar dataKey="retail_value" name="Retail" fill="#22c55e" radius={[6, 6, 0, 0]} />
