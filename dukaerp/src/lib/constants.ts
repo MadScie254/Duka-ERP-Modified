@@ -1,0 +1,77 @@
+export const KE_CONSTANTS = {
+  currency: "KES",
+  locale: "en-KE",
+  timezone: "Africa/Nairobi",
+  phonePrefix: "+254",
+  mpesaPhoneRegex: /^(07|01|2547|2541)\d{8}$/,
+  formatMpesaPhone: (phone: string) => `254${phone.replace(/^0/, "")}`,
+  businessTypes: [
+    "General Retail",
+    "Agrovet",
+    "Pharmacy",
+    "Hardware",
+    "Boutique/Clothes",
+    "Electronics",
+    "Food & Beverage",
+    "Other",
+  ],
+  units: [
+    "piece",
+    "kg",
+    "g",
+    "litre",
+    "ml",
+    "dozen",
+    "pack",
+    "box",
+    "bag",
+    "roll",
+    "metre",
+    "pair",
+  ],
+  defaultExpenseCategories: [
+    "Rent",
+    "Electricity (KPLC)",
+    "Water (NWSC)",
+    "Staff Wages",
+    "Transport",
+    "M-Pesa Charges",
+    "Packaging",
+    "Repairs",
+    "Miscellaneous",
+  ],
+  buildWhatsAppReceiptLink: (phone: string, shopName: string, total: number, items: string) =>
+    `https://wa.me/254${phone}?text=Receipt from ${encodeURIComponent(shopName)}%0A${encodeURIComponent(
+      items
+    )}%0ATotal: KES ${total}. Thank you!`,
+};
+
+export const PLAN_LIMITS = {
+  free: {
+    products: 100,
+    shops: 1,
+    staff: 1,
+    salesHistory: 30,
+    analyticsHistory: 7,
+    mpesa: false,
+    reports: false,
+  },
+  pro: {
+    products: Infinity,
+    shops: 1,
+    staff: 5,
+    salesHistory: Infinity,
+    analyticsHistory: 365,
+    mpesa: true,
+    reports: true,
+  },
+  biashara: {
+    products: Infinity,
+    shops: 10,
+    staff: 50,
+    salesHistory: Infinity,
+    analyticsHistory: Infinity,
+    mpesa: true,
+    reports: true,
+  },
+};
