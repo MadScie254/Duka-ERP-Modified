@@ -1,77 +1,144 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/common/SearchBar";
 import { formatCurrency } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useInventory } from "@/hooks/useInventory";
+import { useSales } from "@/hooks/useSales";
+import { useCustomers } from "@/hooks/useCustomers";
+import toast from "react-hot-toast";
+import type { Product, PaymentMethod } from "@/types";
 
-const products = Array.from({ length: 12 }).map((_, i) => ({
-  id: i,
-  name: `Item ${i + 1}`,
-  price: Math.round(30 + Math.random() * 200),
-}));
+interface CartItem {
+  product_id: string;
+  name: string;
+  qty: number;
+  unit_price: number;
+  cost_price: number;
+}
 
 const POS = () => {
-  const [cart, setCart] = useState<{ id: number; name: string; qty: number; price: number }[]>([]);
+  const { products } = useInventory();
+  const { customers } = useCustomers();
+  const { createSale } = useSales();
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [search, setSearch] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  const addToCart = (product: (typeof products)[number]) => {
+  const allProducts = products.data ?? [];
+  const filtered = search.length >= 1
+    ? allProducts.filter((p) => p.is_active && (p.name.toLowerCase().includes(search.toLowerCase()) || (p.barcode ?? "").includes(search) || (p.sku ?? "").toLowerCase().includes(search.toLowerCase()))).slice(0, 24)
+    : allProducts.filter((p) => p.is_active).slice(0, 24);
+
+  const addToCart = (product: Product) => {
     setCart((prev) => {
-      const existing = prev.find((c) => c.id === product.id);
+      const existing = prev.find((c) => c.product_id === product.id);
       if (existing) {
-        return prev.map((c) => (c.id === product.id ? { ...c, qty: c.qty + 1 } : c));
+        return prev.map((c) => c.product_id === product.id ? { ...c, qty: c.qty + 1 } : c);
       }
-      return [...prev, { ...product, qty: 1 }];
+      return [...prev, { product_id: product.id, name: product.name, qty: 1, unit_price: product.selling_price, cost_price: product.cost_price }];
     });
   };
 
-  const updateQty = (id: number, qty: number) => {
-    setCart((prev) => prev.map((c) => (c.id === id ? { ...c, qty: Math.max(1, qty) } : c)));
+  const updateQty = (productId: string, qty: number) => {
+    if (qty <= 0) {
+      setCart((prev) => prev.filter((c) => c.product_id !== productId));
+    } else {
+      setCart((prev) => prev.map((c) => c.product_id === productId ? { ...c, qty } : c));
+    }
   };
 
-  const subtotal = cart.reduce((acc, cur) => acc + cur.qty * cur.price, 0);
+  const removeItem = (productId: string) => {
+    setCart((prev) => prev.filter((c) => c.product_id !== productId));
+  };
+
+  const subtotal = cart.reduce((acc, cur) => acc + cur.qty * cur.unit_price, 0);
+
+  const completeSale = useCallback(async (method: PaymentMethod) => {
+    if (cart.length === 0) { toast.error("Cart is empty"); return; }
+    try {
+      await createSale.mutateAsync({
+        payment_method: method,
+        customer_id: selectedCustomer || undefined,
+        items: cart.map((c) => ({
+          product_id: c.product_id,
+          product_name: c.name,
+          quantity: c.qty,
+          unit_price: c.unit_price,
+          cost_price: c.cost_price,
+        })),
+      });
+      toast.success(`Sale completed (${method.toUpperCase()})`);
+      setCart([]);
+      setSelectedCustomer("");
+    } catch (err: any) {
+      toast.error(err.message ?? "Sale failed");
+    }
+  }, [cart, selectedCustomer, createSale]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "F2") { e.preventDefault(); searchRef.current?.focus(); }
+      if (e.key === "F4") { e.preventDefault(); completeSale("cash"); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [completeSale]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-bold text-slate-900">Point of Sale</h1>
-          <SearchBar placeholder="Search products, SKU, barcode" />
+          <SearchBar ref={searchRef} placeholder="Search products, SKU, barcode (F2)" onChange={setSearch} />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-          {products.map((p) => (
+          {filtered.map((p) => (
             <button
               key={p.id}
               onClick={() => addToCart(p)}
               className="card p-3 text-left hover:shadow-md transition shadow-sm"
             >
-              <p className="font-semibold text-slate-800">{p.name}</p>
-              <p className="text-sm text-brand-700 font-bold">{formatCurrency(p.price)}</p>
+              <p className="font-semibold text-slate-800 truncate">{p.name}</p>
+              <p className="text-sm text-brand-700 font-bold">{formatCurrency(p.selling_price)}</p>
+              <p className="text-xs text-slate-400">Stock: {p.stock_quantity}</p>
             </button>
           ))}
+          {filtered.length === 0 && <p className="text-sm text-slate-500 col-span-full">No products found</p>}
         </div>
       </div>
 
       <div className="card p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Cart</h2>
-          <p className="text-xs text-slate-500">F2 focus search • F4 complete</p>
+          <p className="text-xs text-slate-500">F2 search &bull; F4 cash sale</p>
         </div>
+
+        <select className="w-full border rounded px-2 py-1.5 text-sm" value={selectedCustomer} onChange={(e) => setSelectedCustomer(e.target.value)}>
+          <option value="">Walk-in customer</option>
+          {(customers.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ""}</option>)}
+        </select>
+
         <div className="space-y-3 max-h-[360px] overflow-y-auto">
           {cart.length === 0 && <p className="text-sm text-slate-500">No items yet</p>}
           {cart.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-2">
-              <div>
-                <p className="font-semibold">{item.name}</p>
-                <p className="text-xs text-slate-500">{formatCurrency(item.price)}</p>
+            <div key={item.product_id} className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold truncate">{item.name}</p>
+                <p className="text-xs text-slate-500">{formatCurrency(item.unit_price)}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Input
                   type="number"
                   className="w-16"
                   value={item.qty}
-                  onChange={(e) => updateQty(item.id, Number(e.target.value))}
-                  min={1}
+                  onChange={(e) => updateQty(item.product_id, Number(e.target.value))}
+                  min={0}
                 />
-                <p className="font-semibold">{formatCurrency(item.qty * item.price)}</p>
+                <p className="font-semibold w-24 text-right">{formatCurrency(item.qty * item.unit_price)}</p>
+                <button onClick={() => removeItem(item.product_id)} className="text-red-500 text-xs ml-1">&times;</button>
               </div>
             </div>
           ))}
@@ -82,10 +149,10 @@ const POS = () => {
             <span className="font-semibold">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex gap-2">
-            <Button className="w-full">Cash</Button>
-            <Button variant="outline" className="w-full">M-Pesa</Button>
+            <Button className="w-full" onClick={() => completeSale("cash")} disabled={createSale.isPending}>Cash</Button>
+            <Button variant="outline" className="w-full" onClick={() => completeSale("mpesa")} disabled={createSale.isPending}>M-Pesa</Button>
           </div>
-          <Button className="w-full">Complete Sale</Button>
+          <Button variant="outline" className="w-full" onClick={() => completeSale("credit")} disabled={createSale.isPending || !selectedCustomer}>Credit</Button>
         </div>
       </div>
     </div>
