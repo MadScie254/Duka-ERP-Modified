@@ -7,54 +7,51 @@ const c = new pg.Client({
 async function main() {
   await c.connect();
   
-  // Fix demo user to match GoTrue's expected format
-  // 1. Update raw_user_meta_data to include sub, email, email_verified
-  // 2. Re-hash password with GoTrue's default cost factor (10)
-  await c.query(`
-    UPDATE auth.users SET
-      raw_user_meta_data = jsonb_build_object(
-        'sub', '00000000-0000-0000-0000-000000000099',
-        'email', 'demo@dukaerp.com',
-        'full_name', 'Demo User',
-        'email_verified', true,
-        'phone_verified', false
-      ),
-      encrypted_password = crypt('password123', gen_salt('bf', 10)),
-      updated_at = NOW()
-    WHERE id = '00000000-0000-0000-0000-000000000099'
-  `);
-  console.log('Demo user updated with proper metadata and password hash');
+  // Check for stale sessions/refresh tokens for demo user
+  const sessions = await c.query(`SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099'`);
+  console.log('Demo user sessions:', sessions.rows.length);
   
-  // Verify
-  const user = await c.query(`
-    SELECT SUBSTRING(encrypted_password, 1, 7) as pw_prefix,
-           raw_user_meta_data
-    FROM auth.users WHERE id = '00000000-0000-0000-0000-000000000099'
-  `);
-  console.log('Updated pw_prefix:', user.rows[0]?.pw_prefix);
-  console.log('Updated meta:', JSON.stringify(user.rows[0]?.raw_user_meta_data));
+  const tokens = await c.query(`SELECT id FROM auth.refresh_tokens WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099')`);
+  console.log('Demo user refresh tokens:', tokens.rows.length);
   
-  // Also update the identity data
-  await c.query(`
-    UPDATE auth.identities SET
-      identity_data = jsonb_build_object(
-        'sub', '00000000-0000-0000-0000-000000000099',
-        'email', 'demo@dukaerp.com',
-        'full_name', 'Demo User',
-        'email_verified', true,
-        'phone_verified', false
-      ),
-      updated_at = NOW()
-    WHERE user_id = '00000000-0000-0000-0000-000000000099'
+  // Clean up all session data for demo user
+  await c.query(`DELETE FROM auth.refresh_tokens WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099')`);
+  await c.query(`DELETE FROM auth.mfa_amr_claims WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099')`);
+  await c.query(`DELETE FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099'`);
+  console.log('Cleaned up demo sessions');
+  
+  // Maybe the problem is very specific: the demo user's ID is all zeros except 99
+  // GoTrue might have special handling for nil-like UUIDs
+  // Let me check ALL columns of both users to find ANY difference
+  const allCols = await c.query(`
+    SELECT column_name FROM information_schema.columns 
+    WHERE table_schema = 'auth' AND table_name = 'users'
+    ORDER BY ordinal_position
   `);
-  console.log('Identity data updated');
+  
+  const colNames = allCols.rows.map(r => r.column_name).filter(c => c !== 'encrypted_password');
+  const query = `SELECT ${colNames.map(c => `"${c}"`).join(', ')} FROM auth.users WHERE email IN ('demo@dukaerp.com', 'dukatest2025@gmail.com') ORDER BY email`;
+  const both = await c.query(query);
+  
+  console.log('\nFULL COMPARISON (excluding password):');
+  if (both.rows.length === 2) {
+    const [demo, working] = both.rows;
+    for (const col of colNames) {
+      const dv = JSON.stringify(demo[col]);
+      const wv = JSON.stringify(working[col]);
+      if (dv !== wv) {
+        console.log(`  DIFF ${col}:`);
+        console.log(`    demo:    ${dv}`);
+        console.log(`    working: ${wv}`);
+      }
+    }
+  }
   
   await c.end();
   
+  // Test login again after cleanup
   await new Promise(r => setTimeout(r, 1000));
-  
-  // Test login
-  console.log('\n--- Login with updated demo user ---');
+  console.log('\n--- Login test ---');
   const resp = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/token?grant_type=password', {
     method: 'POST',
     headers: {
@@ -63,13 +60,8 @@ async function main() {
     },
     body: JSON.stringify({ email: 'demo@dukaerp.com', password: 'password123' })
   });
-  console.log('Login Status:', resp.status);
+  console.log('Status:', resp.status);
   const lb = await resp.text();
-  if (resp.status === 200) {
-    const data = JSON.parse(lb);
-    console.log('DEMO LOGIN SUCCESS! User:', data.user?.id);
-  } else {
-    console.log('Login response:', lb.substring(0, 400));
-  }
+  console.log('Response:', lb.substring(0, 400));
 }
 main().catch(e => { console.error('FATAL:', e.message, e.stack); process.exit(1); });
