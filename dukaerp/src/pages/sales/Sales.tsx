@@ -1,16 +1,20 @@
-import DataTable from "@/components/common/DataTable";
+import { useSales } from "@/hooks/useSales";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate, Link } from "react-router-dom";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 
-const sales = Array.from({ length: 8 }).map((_, i) => ({
-  id: `INV-2024-${String(1 + i).padStart(4, "0")}`,
-  customer: ["Walk-in", "Jane", "Kamau"][i % 3],
-  total: `KES ${(1500 + i * 320).toLocaleString("en-KE")}`,
-  status: "completed",
-}));
+const statusColors: Record<string, string> = {
+  completed: "bg-green-100 text-green-700",
+  pending: "bg-yellow-100 text-yellow-700",
+  voided: "bg-red-100 text-red-700",
+  refunded: "bg-slate-100 text-slate-600",
+};
 
 const Sales = () => {
   const navigate = useNavigate();
+  const { sales } = useSales();
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -21,16 +25,56 @@ const Sales = () => {
         <Button onClick={() => navigate("/pos")}>New Sale</Button>
       </div>
       <div className="card p-4">
-        <DataTable
-          columns={[
-            { header: "Receipt", accessor: "id" },
-            { header: "Customer", accessor: "customer" },
-            { header: "Total", accessor: "total" },
-            { header: "Status", accessor: "status" },
-          ]}
-          data={sales}
-          emptyMessage="No sales yet"
-        />
+        {sales.isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : !sales.data?.length ? (
+          <p className="text-sm text-slate-500">No sales yet</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="text-left px-4 py-3 font-semibold">Receipt</th>
+                  <th className="text-left px-4 py-3 font-semibold">Customer</th>
+                  <th className="text-left px-4 py-3 font-semibold">Method</th>
+                  <th className="text-right px-4 py-3 font-semibold">Total</th>
+                  <th className="text-left px-4 py-3 font-semibold">Status</th>
+                  <th className="text-left px-4 py-3 font-semibold">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sales.data.map((sale: any) => (
+                  <tr key={sale.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <Link to={`/sales/${sale.id}`} className="text-brand-700 font-medium hover:underline">
+                        {sale.receipt_number}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {sale.customers?.name ?? "Walk-in"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 capitalize">{sale.payment_method}</td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-900">
+                      {formatCurrency(sale.total_amount)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[sale.status] ?? "bg-slate-100 text-slate-600"}`}>
+                        {sale.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">
+                      {formatDateTime(sale.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
