@@ -1,16 +1,22 @@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/common/EmptyState";
+import type { StockValuationRow } from "@/types";
 
-const data = Array.from({ length: 6 }).map((_, i) => ({
-  name: `Category ${i + 1}`,
-  cost_value: Math.round(30000 + Math.random() * 40000),
-  retail_value: Math.round(50000 + Math.random() * 60000),
-}));
+interface Props {
+  data?: StockValuationRow[];
+  loading?: boolean;
+}
 
-const StockValueChart = ({ loading = false }: { loading?: boolean }) => {
+const StockValueChart = ({ data = [], loading = false }: Props) => {
   if (loading) return <Skeleton className="h-64 w-full" />;
   if (!data.length) return <EmptyState title="No stock yet" description="Add products to see stock valuation." />;
+
+  const chartData = data.slice(0, 10).map((p) => ({
+    name: p.product_name.length > 15 ? p.product_name.slice(0, 13) + "…" : p.product_name,
+    cost_value: p.cost_value,
+    retail_value: p.retail_value,
+  }));
 
   return (
     <div className="card p-4 space-y-4">
@@ -20,11 +26,11 @@ const StockValueChart = ({ loading = false }: { loading?: boolean }) => {
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
+          <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
             <YAxis tickFormatter={(v) => `KES ${Number(v) / 1000}k`} />
-            <Tooltip formatter={((v: unknown) => `KES ${Number(v || 0).toLocaleString("en-KE")}`) as any} />
+            <Tooltip formatter={(v: number) => `KES ${v.toLocaleString("en-KE")}`} />
             <Legend />
             <Bar dataKey="cost_value" name="Cost" fill="#94a3b8" radius={[6, 6, 0, 0]} />
             <Bar dataKey="retail_value" name="Retail" fill="#22c55e" radius={[6, 6, 0, 0]} />
