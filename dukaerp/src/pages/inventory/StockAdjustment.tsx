@@ -1,13 +1,48 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useInventory } from "@/hooks/useInventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import toast from "react-hot-toast";
+import type { AdjustmentReason } from "@/types";
+
+const reasons: { value: AdjustmentReason; label: string }[] = [
+  { value: "count_correction", label: "Count correction" },
+  { value: "damage", label: "Damage" },
+  { value: "theft", label: "Theft" },
+  { value: "expiry", label: "Expiry" },
+  { value: "restock", label: "Restock" },
+  { value: "other", label: "Other" },
+];
 
 const StockAdjustment = () => {
+  const navigate = useNavigate();
+  const { products, adjustStock } = useInventory();
+  const [productId, setProductId] = useState("");
+  const [newCount, setNewCount] = useState("");
+  const [reason, setReason] = useState<AdjustmentReason>("count_correction");
+  const [notes, setNotes] = useState("");
+
+  const selectedProduct = (products.data ?? []).find((p) => p.id === productId);
+
   const handleAdjust = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Stock adjustment recorded (stub)");
+    if (!selectedProduct) return;
+    adjustStock.mutate(
+      {
+        product_id: productId,
+        previous_quantity: selectedProduct.stock_quantity,
+        new_quantity: Number(newCount),
+        reason,
+        notes: notes || undefined,
+      },
+      {
+        onSuccess: () => { toast.success("Stock adjusted"); navigate("/inventory"); },
+        onError: (err) => toast.error(err.message),
+      }
+    );
   };
 
   return (
@@ -17,32 +52,40 @@ const StockAdjustment = () => {
           <h1 className="text-xl font-bold text-slate-900">Stock Adjustment</h1>
           <p className="text-sm text-slate-500">Capture accurate counts with reasons for audit trail.</p>
         </div>
-        <Button form="adjust-form" type="submit">Save</Button>
+        <Button form="adjust-form" type="submit" disabled={adjustStock.isPending}>
+          {adjustStock.isPending ? "Saving…" : "Save"}
+        </Button>
       </div>
       <form id="adjust-form" onSubmit={handleAdjust} className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1">
           <Label>Product</Label>
-          <Select>
-            <option>Product A</option>
-            <option>Product B</option>
+          <Select value={productId} onChange={(e) => setProductId(e.target.value)} required>
+            <option value="">-- Select product --</option>
+            {(products.data ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} (current: {p.stock_quantity})
+              </option>
+            ))}
           </Select>
         </div>
         <div className="space-y-1">
           <Label>New Count</Label>
-          <Input type="number" min={0} required />
+          <Input type="number" min={0} required value={newCount} onChange={(e) => setNewCount(e.target.value)} />
+          {selectedProduct && (
+            <p className="text-xs text-slate-500">Current stock: {selectedProduct.stock_quantity}</p>
+          )}
         </div>
         <div className="space-y-1 md:col-span-2">
           <Label>Reason</Label>
-          <Select required>
-            <option>Damage</option>
-            <option>Count correction</option>
-            <option>Theft</option>
-            <option>Other</option>
+          <Select required value={reason} onChange={(e) => setReason(e.target.value as AdjustmentReason)}>
+            {reasons.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
           </Select>
         </div>
         <div className="space-y-1 md:col-span-2">
           <Label>Notes</Label>
-          <Input placeholder="Optional notes" />
+          <Input placeholder="Optional notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </form>
     </div>
