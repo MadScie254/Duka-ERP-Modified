@@ -21,6 +21,7 @@ const Suppliers = () => {
         email: form.email || null,
         contact_person: form.contact_person || null,
         notes: form.notes || null,
+        address: null,
       },
       {
         onSuccess: () => { toast.success("Supplier added"); setShowForm(false); setForm({ name: "", phone: "", email: "", contact_person: "", notes: "" }); },
