@@ -20,14 +20,35 @@ import Analytics from "@/pages/analytics/Analytics";
 import Reports from "@/pages/reports/Reports";
 import Settings from "@/pages/settings/Settings";
 import { useAuthStore } from "@/store/authStore";
+import { useAuthInit } from "@/hooks/useAuthInit";
 import React from "react";
 import { Outlet } from "react-router-dom";
 
 const ProtectedLayout = () => {
+  const { ready } = useAuthInit();
   const session = useAuthStore((state) => state.session);
-  if (!session && !import.meta.env.DEV) {
+  const activeShop = useAuthStore((state) => state.activeShop);
+
+  // Wait for auth to initialise before deciding
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
+        <div className="text-center space-y-2">
+          <div className="h-8 w-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-slate-500">Loading DukaERP…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
     return <Navigate to="/login" replace />;
   }
+
+  if (!activeShop) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return <AppShell />;
 };
 
