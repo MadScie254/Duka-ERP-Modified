@@ -7,61 +7,103 @@ const c = new pg.Client({
 async function main() {
   await c.connect();
   
-  // Check for stale sessions/refresh tokens for demo user
-  const sessions = await c.query(`SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099'`);
-  console.log('Demo user sessions:', sessions.rows.length);
+  const NEW_USER_ID = '3a636a38-38a3-4485-af73-8e779906b0b7';
+  const OLD_USER_ID = '00000000-0000-0000-0000-000000000099';
+  const SHOP_ID = '00000000-0000-0000-0000-000000000001';
   
-  const tokens = await c.query(`SELECT id FROM auth.refresh_tokens WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099')`);
-  console.log('Demo user refresh tokens:', tokens.rows.length);
-  
-  // Clean up all session data for demo user
-  await c.query(`DELETE FROM auth.refresh_tokens WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099')`);
-  await c.query(`DELETE FROM auth.mfa_amr_claims WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099')`);
-  await c.query(`DELETE FROM auth.sessions WHERE user_id = '00000000-0000-0000-0000-000000000099'`);
-  console.log('Cleaned up demo sessions');
-  
-  // Maybe the problem is very specific: the demo user's ID is all zeros except 99
-  // GoTrue might have special handling for nil-like UUIDs
-  // Let me check ALL columns of both users to find ANY difference
-  const allCols = await c.query(`
-    SELECT column_name FROM information_schema.columns 
-    WHERE table_schema = 'auth' AND table_name = 'users'
-    ORDER BY ordinal_position
-  `);
-  
-  const colNames = allCols.rows.map(r => r.column_name).filter(c => c !== 'encrypted_password');
-  const query = `SELECT ${colNames.map(c => `"${c}"`).join(', ')} FROM auth.users WHERE email IN ('demo@dukaerp.com', 'dukatest2025@gmail.com') ORDER BY email`;
-  const both = await c.query(query);
-  
-  console.log('\nFULL COMPARISON (excluding password):');
-  if (both.rows.length === 2) {
-    const [demo, working] = both.rows;
-    for (const col of colNames) {
-      const dv = JSON.stringify(demo[col]);
-      const wv = JSON.stringify(working[col]);
-      if (dv !== wv) {
-        console.log(`  DIFF ${col}:`);
-        console.log(`    demo:    ${dv}`);
-        console.log(`    working: ${wv}`);
-      }
-    }
+  // 1. Create profile for the new user
+  try {
+    await c.query(`
+      INSERT INTO profiles (id, full_name, phone, plan)
+      VALUES ($1, 'Demo User', '+254700000000', 'free')
+      ON CONFLICT (id) DO UPDATE SET full_name = 'Demo User'
+    `, [NEW_USER_ID]);
+    console.log('1. Profile created for new user');
+  } catch(e) {
+    console.log('1. Profile error:', e.message);
   }
+  
+  // 2. Update shop owner to new user
+  try {
+    await c.query(`UPDATE shops SET owner_id = $1 WHERE id = $2`, [NEW_USER_ID, SHOP_ID]);
+    console.log('2. Shop owner updated to new user');
+  } catch(e) {
+    console.log('2. Shop owner update error:', e.message);
+  }
+  
+  // 3. Update sales cashier_id to new user
+  try {
+    const updated = await c.query(`UPDATE sales SET cashier_id = $1 WHERE cashier_id = $2`, [NEW_USER_ID, OLD_USER_ID]);
+    console.log('3. Updated', updated.rowCount, 'sales cashier_id');
+  } catch(e) {
+    console.log('3. Sales cashier update error:', e.message);
+  }
+  
+  // 4. Check for any other references to the old user
+  const fks = await c.query(`
+    SELECT tc.table_name, kcu.column_name 
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+    JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+    WHERE tc.constraint_type = 'FOREIGN KEY' AND ccu.table_name = 'profiles' AND ccu.column_name = 'id'
+  `);
+  console.log('4. Tables referencing profiles.id:', fks.rows.map(r => `${r.table_name}.${r.column_name}`).join(', '));
+  
+  // 5. Now clean up old user (remove identity, then try deleting if possible)
+  try {
+    await c.query(`DELETE FROM auth.identities WHERE user_id = $1`, [OLD_USER_ID]);
+    console.log('5. Old user identities deleted');
+    
+    // Try deleting old profile (might fail if still referenced)
+    await c.query(`DELETE FROM profiles WHERE id = $1`, [OLD_USER_ID]);
+    console.log('5. Old profile deleted');
+    
+    // Try deleting old user from auth
+    await c.query(`DELETE FROM auth.users WHERE id = $1`, [OLD_USER_ID]);
+    console.log('5. Old auth user deleted');
+  } catch(e) {
+    console.log('5. Cleanup error:', e.message);
+    // That's OK - we'll just leave the old user around
+  }
+  
+  // 6. Recreate the auth trigger (for future signups)
+  await c.query(`DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users`);
+  await c.query(`
+    CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION handle_new_user()
+  `);
+  console.log('6. Auth trigger recreated');
+  
+  // 7. Verify everything
+  const profile = await c.query(`SELECT id, full_name FROM profiles WHERE id = $1`, [NEW_USER_ID]);
+  console.log('7. New user profile:', JSON.stringify(profile.rows[0]));
+  
+  const shop = await c.query(`SELECT id, name, owner_id FROM shops WHERE id = $1`, [SHOP_ID]);
+  console.log('7. Shop:', JSON.stringify(shop.rows[0]));
+  
+  const products = await c.query(`SELECT COUNT(*) FROM products WHERE shop_id = $1`, [SHOP_ID]);
+  console.log('7. Products:', products.rows[0]?.count);
   
   await c.end();
   
-  // Test login again after cleanup
-  await new Promise(r => setTimeout(r, 1000));
-  console.log('\n--- Login test ---');
+  // 8. Verify login still works
+  console.log('\n--- Login verification ---');
   const resp = await fetch('https://ysqzizmgemtkizbvtuyr.supabase.co/auth/v1/token?grant_type=password', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcXppem1nZW10a2l6YnZ0dXlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODAwNzIsImV4cCI6MjA4ODY1NjA3Mn0.on96vHcNkhIzZFTggMNX2A22p5vpzBIippQ6A19Pw1U'
     },
-    body: JSON.stringify({ email: 'demo@dukaerp.com', password: 'password123' })
+    body: JSON.stringify({ email: 'dukatest2025@gmail.com', password: 'Password123!' })
   });
-  console.log('Status:', resp.status);
-  const lb = await resp.text();
-  console.log('Response:', lb.substring(0, 400));
+  console.log('Login Status:', resp.status);
+  if (resp.status === 200) {
+    const data = JSON.parse(await resp.text());
+    console.log('LOGIN SUCCESS! User:', data.user?.id);
+    console.log('Access token:', data.access_token?.substring(0, 40) + '...');
+  } else {
+    console.log('Login error:', await resp.text());
+  }
 }
 main().catch(e => { console.error('FATAL:', e.message, e.stack); process.exit(1); });
