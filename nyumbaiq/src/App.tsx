@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import { useAuthStore } from './store/authStore';
 
 // Auth pages
 import { LoginPage } from './pages/auth/Login';
@@ -24,7 +25,8 @@ import { InsightsPage } from './pages/insights/InsightsPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { loading, profile } = useAuth();
+  const loading = useAuthStore((s) => s.loading);
+  const profile = useAuthStore((s) => s.profile);
 
   if (loading) {
     return (
@@ -39,7 +41,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 function RoleRouter() {
-  const { profile } = useAuth();
+  const profile = useAuthStore((s) => s.profile);
   if (!profile) return null;
   if (profile.role === 'admin') return <AdminDashboard />;
   if (profile.role === 'landlord') return <LandlordDashboard />;
@@ -48,6 +50,10 @@ function RoleRouter() {
 }
 
 export default function App() {
+  // Initialize auth listener at app level so it's always active
+  // (even on public routes like /login)
+  useAuth();
+
   return (
     <BrowserRouter>
       <Routes>

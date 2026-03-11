@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
@@ -11,10 +11,11 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // When profile loads after sign-in, redirect to dashboard
-  useEffect(() => {
-    if (profile) navigate('/dashboard', { replace: true });
-  }, [profile, navigate]);
+  // If already logged in, go to dashboard
+  if (profile) {
+    navigate('/dashboard', { replace: true });
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +26,9 @@ export function LoginPage() {
       setError(signInError.message);
       setLoading(false);
     }
-    // Don't setLoading(false) on success — the useEffect redirect handles it
+    // On success: the App-level useAuth listener picks up the auth change,
+    // loads the profile, then this component re-renders with profile set
+    // and the check above redirects to /dashboard
   };
 
   return (
