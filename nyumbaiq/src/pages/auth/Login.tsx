@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../store/authStore';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const profile = useAuthStore((s) => s.profile);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // When profile loads after sign-in, redirect to dashboard
+  useEffect(() => {
+    if (profile) navigate('/dashboard', { replace: true });
+  }, [profile, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,10 +23,9 @@ export function LoginPage() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
       setError(signInError.message);
-    } else {
-      navigate('/dashboard');
+      setLoading(false);
     }
-    setLoading(false);
+    // Don't setLoading(false) on success — the useEffect redirect handles it
   };
 
   return (
