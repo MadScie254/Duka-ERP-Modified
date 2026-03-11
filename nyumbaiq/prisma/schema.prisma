@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+}
+
+enum UserRole {
+  admin
+  landlord
+  agent
+  tenant
+}
+
+enum PropertyType {
+  residential
+  commercial
+  mixed
+}
+
+enum PropertyStatus {
+  active
+  inactive
+  under_renovation
+}
+
+enum UnitType {
+  bedsitter
+  _1br
+  _2br
+  _3br
+  penthouse
+  office
+  warehouse
+  retail
+  studio
+}
+
+enum UnitStatus {
+  vacant
+  occupied
+  reserved
+  under_maintenance
+}
+
+enum LeaseStatus {
+  active
+  expired
+  terminated
+  pending_signature
+}
+
+enum PaymentMethod {
+  mpesa
+  bank_transfer
+  cash
+  cheque
+}
+
+enum PaymentStatus {
+  confirmed
+  partial
+  pending
+  failed
+  refunded
+}
+
+enum MaintenanceCategory {
+  plumbing
+  electrical
+  structural
+  appliance
+  security
+  cleaning
+  pest_control
+  other
+}
+
+enum MaintenancePriority {
+  low
+  medium
+  high
+  emergency
+}
+
+enum MaintenanceStatus {
+  open
+  in_progress
+  awaiting_parts
+  resolved
+  closed
+}
+
+enum ListingType {
+  rent
+  sale
+  lease
+}
+
+enum NotificationType {
+  rent_due
+  rent_paid
+  rent_overdue
+  maintenance_update
+  lease_expiring
+  new_listing
+  system_alert
+}
+
+enum InsightType {
+  vacancy
+  revenue
+  risk
+  market
+  maintenance
+  forecast
+}
+
+enum InsightSeverity {
+  info
+  warning
+  critical
+  opportunity
+}
+
+enum RelatedEntity {
+  lease
+  payment
+  property
+  tenant
+  maintenance
+}
+
+model profiles {
+  id          String   @id @db.Uuid
+  full_name   String?
+  email       String?  @unique
+  phone       String?
+  role        UserRole @default(tenant)
+  avatar_url  String?
+  county      String?
+  national_id String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  properties        properties[]    @relation("PropertyOwner")
+  leases_tenant     leases[]        @relation("LeaseTenant")
+  leases_landlord   leases[]        @relation("LeaseLandlord")
+  rent_payments     rent_payments[] @relation("PaymentTenant")
+  bank_transactions bank_transactions[]
+  notifications     notifications[]
+  documents         documents[]     @relation("DocumentOwner")
+}
+
+model properties {
+  id                 String        @id @default(uuid()) @db.Uuid
+  owner_id           String        @db.Uuid
+  name               String
+  description        String?
+  property_type      PropertyType
+  county             String
+  sub_county         String?
+  area_name          String?
+  address            String?
+  latitude           Decimal?      @db.Numeric(10, 7)
+  longitude          Decimal?      @db.Numeric(10, 7)
+  total_units        Int?
+  year_built         Int?
+  amenities          Json?
+  images             String[]
+  is_listed_publicly Boolean       @default(false)
+  status             PropertyStatus @default(active)
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime      @default(now()) @db.Timestamptz(6)
+
+  owner       profiles    @relation("PropertyOwner", fields: [owner_id], references: [id], onDelete: Cascade)
+  units       units[]
+  leases      leases[]
+  rent_payments rent_payments[]
+  listings    listings[]
+  maintenance_requests maintenance_requests[]
+  bank_transactions bank_transactions[]
+}
+
+model units {
+  id            String     @id @default(uuid()) @db.Uuid
+  property_id   String     @db.Uuid
+  unit_number   String
+  floor_number  String?
+  unit_type     UnitType
+  size_sqft     Decimal?   @db.Numeric
+  monthly_rent  Decimal    @db.Numeric
+  deposit_amount Decimal?  @db.Numeric
+  status        UnitStatus @default(vacant)
+  furnished     Boolean    @default(false)
+  features      Json?
+  images        String[]
+  created_at    DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime   @default(now()) @db.Timestamptz(6)
+
+  property properties @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  leases   leases[]
+  rent_payments rent_payments[]
+  maintenance_requests maintenance_requests[]
+  listings listings[]
+}
+
+model leases {
+  id            String      @id @default(uuid()) @db.Uuid
+  property_id   String      @db.Uuid
+  unit_id       String      @db.Uuid
+  tenant_id     String      @db.Uuid
+  landlord_id   String      @db.Uuid
+  start_date    DateTime
+  end_date      DateTime?
+  monthly_rent  Decimal     @db.Numeric
+  deposit_paid  Decimal?    @db.Numeric
+  lease_terms   String?
+  payment_day   Int
+  auto_renew    Boolean     @default(false)
+  status        LeaseStatus @default(pending_signature)
+  signed_at     DateTime?   @db.Timestamptz(6)
+  pdf_url       String?
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime    @default(now()) @db.Timestamptz(6)
+
+  property properties @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  unit     units      @relation(fields: [unit_id], references: [id], onDelete: Cascade)
+  tenant   profiles   @relation("LeaseTenant", fields: [tenant_id], references: [id])
+  landlord profiles   @relation("LeaseLandlord", fields: [landlord_id], references: [id])
+  rent_payments rent_payments[]
+
+  @@index([unit_id])
+  @@index([tenant_id])
+}
+
+model rent_payments {
+  id               String         @id @default(uuid()) @db.Uuid
+  lease_id         String         @db.Uuid
+  tenant_id        String         @db.Uuid
+  property_id      String         @db.Uuid
+  unit_id          String         @db.Uuid
+  amount_expected  Decimal        @db.Numeric
+  amount_paid      Decimal?       @db.Numeric
+  payment_method   PaymentMethod  @default(mpesa)
+  mpesa_code       String?
+  mpesa_phone      String?
+  mpesa_receipt_url String?
+  payment_for_month DateTime
+  payment_date     DateTime?
+  status           PaymentStatus  @default(pending)
+  late_fee_applied Decimal?       @db.Numeric
+  notes            String?
+  recorded_by      String?        @db.Uuid
+  created_at       DateTime       @default(now()) @db.Timestamptz(6)
+
+  lease   leases    @relation(fields: [lease_id], references: [id], onDelete: Cascade)
+  tenant  profiles  @relation("PaymentTenant", fields: [tenant_id], references: [id])
+  property properties @relation(fields: [property_id], references: [id])
+  unit    units     @relation(fields: [unit_id], references: [id])
+}
+
+model bank_transactions {
+  id                String   @id @default(uuid()) @db.Uuid
+  landlord_id       String   @db.Uuid
+  property_id       String?  @db.Uuid
+  transaction_ref   String
+  bank_name         String?
+  account_number    String?
+  transaction_type  String
+  amount            Decimal  @db.Numeric
+  description       String?
+  transaction_date  DateTime
+  linked_payment_id String?  @db.Uuid
+  attachment_url    String?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  landlord profiles @relation(fields: [landlord_id], references: [id])
+  property properties? @relation(fields: [property_id], references: [id])
+  rent_payment rent_payments? @relation(fields: [linked_payment_id], references: [id])
+}
+
+model maintenance_requests {
+  id              String             @id @default(uuid()) @db.Uuid
+  unit_id         String?            @db.Uuid
+  property_id     String?            @db.Uuid
+  reported_by     String?            @db.Uuid
+  assigned_to     String?            @db.Uuid
+  category        MaintenanceCategory
+  title           String
+  description     String?
+  priority        MaintenancePriority @default(medium)
+  status          MaintenanceStatus   @default(open)
+  images          String[]
+  resolution_notes String?
+  cost_incurred   Decimal?           @db.Numeric
+  opened_at       DateTime           @default(now()) @db.Timestamptz(6)
+  resolved_at     DateTime?          @db.Timestamptz(6)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime           @default(now()) @db.Timestamptz(6)
+
+  unit        units?     @relation(fields: [unit_id], references: [id])
+  property    properties? @relation(fields: [property_id], references: [id])
+  reporter    profiles?  @relation(fields: [reported_by], references: [id])
+  assignee    profiles?  @relation(fields: [assigned_to], references: [id])
+}
+
+model listings {
+  id             String      @id @default(uuid()) @db.Uuid
+  property_id    String      @db.Uuid
+  unit_id        String?     @db.Uuid
+  listed_by      String?     @db.Uuid
+  title          String
+  description    String?
+  listing_type   ListingType
+  asking_price   Decimal?
+  negotiable     Boolean     @default(false)
+  available_from DateTime?
+  highlights     Json?
+  virtual_tour_url String?
+  cover_image_url String?
+  gallery_urls   String[]
+  views_count    Int         @default(0)
+  is_featured    Boolean     @default(false)
+  is_active      Boolean     @default(true)
+  expires_at     DateTime?
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime    @default(now()) @db.Timestamptz(6)
+
+  property properties @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  unit     units?     @relation(fields: [unit_id], references: [id])
+  lister   profiles?  @relation(fields: [listed_by], references: [id])
+}
+
+model notifications {
+  id         String           @id @default(uuid()) @db.Uuid
+  user_id    String           @db.Uuid
+  type       NotificationType
+  title      String
+  body       String
+  is_read    Boolean          @default(false)
+  action_url String?
+  created_at DateTime         @default(now()) @db.Timestamptz(6)
+
+  user profiles @relation(fields: [user_id], references: [id])
+}
+
+model ai_insights {
+  id            String         @id @default(uuid()) @db.Uuid
+  generated_for String?        @db.Uuid
+  insight_type  InsightType
+  title         String
+  body          String
+  severity      InsightSeverity @default(info)
+  data_snapshot Json?
+  expires_at    DateTime?
+  created_at    DateTime       @default(now()) @db.Timestamptz(6)
+
+  profile profiles? @relation(fields: [generated_for], references: [id])
+}
+
+model documents {
+  id            String       @id @default(uuid()) @db.Uuid
+  owner_id      String       @db.Uuid
+  related_to    RelatedEntity
+  related_id    String       @db.Uuid
+  document_type String?
+  file_name     String?
+  file_url      String
+  file_size_kb  Int?
+  uploaded_by   String?      @db.Uuid
+  created_at    DateTime     @default(now()) @db.Timestamptz(6)
+
+  owner profiles @relation("DocumentOwner", fields: [owner_id], references: [id])
+  uploader profiles? @relation(fields: [uploaded_by], references: [id])
+}
