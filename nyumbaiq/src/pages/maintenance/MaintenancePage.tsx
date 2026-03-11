@@ -217,7 +217,8 @@ export function MaintenancePage() {
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
 
       <Modal open={showModal} title="New Maintenance Request" onClose={() => setShowModal(false)} wide>

@@ -1,12 +1,15 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import type { AIInsight } from '../../lib/types';
 import { Shell } from '../../components/layout/Shell';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ChartCard } from '../../components/ui/ChartCard';
 import { formatDate } from '../../lib/formatters';
+import { CHART_COLORS, PIE_PALETTE } from '../../lib/chartColors';
 import { Sparkles, RefreshCw } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const severityTone = (s: string) => {
   if (s === 'info') return 'info' as const;
