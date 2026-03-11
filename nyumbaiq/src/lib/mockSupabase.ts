@@ -3,7 +3,6 @@
  * Implements the PostgREST-style chained query API against in-memory mock data.
  */
 import { mockTables } from './mockData';
-import { profiles } from './mockData';
 
 // ─── tiny select-join parser ───────────────────────────────
 // Handles: "*, properties(name)", "*, units(count)", "*", "id, name" etc.
