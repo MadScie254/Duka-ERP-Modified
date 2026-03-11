@@ -9,6 +9,7 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
