@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Shell } from '../../components/layout/Shell';
 import { Badge } from '../../components/ui/Badge';
@@ -13,16 +13,16 @@ export function AdminUsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchUsers = useCallback(async () => {
-    const { data } = await supabase
+  useEffect(() => {
+    supabase
       .from('profiles')
       .select('*')
-      .order('created_at', { ascending: false });
-    setUsers((data ?? []) as Profile[]);
-    setLoading(false);
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setUsers((data ?? []) as Profile[]);
+        setLoading(false);
+      });
   }, []);
-
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const changeRole = async (userId: string, newRole: UserRole) => {
     await supabase.from('profiles').update({ role: newRole }).eq('id', userId);

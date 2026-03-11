@@ -23,19 +23,18 @@ export function NotificationsPage() {
   const [notes, setNotes] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = async () => {
+  useEffect(() => {
     if (!profile) return;
-    setLoading(true);
-    const { data } = await supabase
+    supabase
       .from('notifications')
       .select('*')
       .eq('user_id', profile.id)
-      .order('created_at', { ascending: false });
-    setNotes((data ?? []) as Notification[]);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetch(); }, [profile?.id]);
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setNotes((data ?? []) as Notification[]);
+        setLoading(false);
+      });
+  }, [profile]);
 
   // Realtime subscription
   useEffect(() => {
@@ -47,7 +46,7 @@ export function NotificationsPage() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [profile?.id]);
+  }, [profile]);
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);

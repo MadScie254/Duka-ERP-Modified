@@ -40,7 +40,16 @@ export function UnitsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    Promise.all([
+      supabase.from('units').select('*, properties(*)').order('created_at', { ascending: false }),
+      supabase.from('properties').select('id, name').order('name'),
+    ]).then(([u, p]) => {
+      setUnits((u.data ?? []) as (Unit & { properties: Property })[]);
+      setProperties((p.data ?? []) as Property[]);
+      setLoading(false);
+    });
+  }, []);
 
   return (
     <Shell title="Units" role={role}>

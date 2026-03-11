@@ -42,7 +42,7 @@ export function useAuth() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [setSession, setProfile, setLoading, loadProfile]);
 
   return { session, profile, loading };
 }

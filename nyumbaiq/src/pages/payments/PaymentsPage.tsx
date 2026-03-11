@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import type { RentPayment } from '../../lib/types';
@@ -28,7 +28,7 @@ export function PaymentsPage() {
   const [pushing, setPushing] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     setLoading(true);
     const q = supabase
       .from('rent_payments')
@@ -42,9 +42,9 @@ export function PaymentsPage() {
     const { data } = await q;
     setPayments((data ?? []) as RentPayment[]);
     setLoading(false);
-  };
+  }, [role, profile]);
 
-  useEffect(() => { fetchPayments(); }, []);
+  useEffect(() => { fetchPayments(); }, [fetchPayments]);
 
   const handleStkPush = async () => {
     if (!selected || !phone) return;

@@ -28,7 +28,14 @@ export function PropertiesPage() {
   };
 
   useEffect(() => {
-    loadProperties();
+    supabase
+      .from('properties')
+      .select('*, units(count)')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setProperties((data as Property[]) ?? []);
+        setLoading(false);
+      });
   }, []);
 
   return (

@@ -8,7 +8,7 @@ type ShellProps = {
   role: 'admin' | 'landlord' | 'agent' | 'tenant';
 };
 
-const navByRole: Record<ShellProps['role'], { label: string; icon: React.FC<any>; to: string }[]> = {
+const navByRole: Record<ShellProps['role'], { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; to: string }[]> = {
   admin: [
     { label: 'Overview', icon: LayoutDashboard, to: '/dashboard' },
     { label: 'Properties', icon: Building2, to: '/admin/properties' },

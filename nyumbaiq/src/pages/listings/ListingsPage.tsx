@@ -52,19 +52,23 @@ export function ListingsPage() {
     setLoading(false);
   };
 
-  const fetchProperties = async () => {
-    const { data } = await supabase.from('properties').select('id, name').eq('status', 'active').order('name');
-    setProperties(data ?? []);
-  };
-
-  useEffect(() => { fetchListings(); fetchProperties(); }, []);
+  useEffect(() => {
+    supabase
+      .from('listings')
+      .select('*, properties(name), units(unit_number)')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setListings((data ?? []) as Listing[]);
+        setLoading(false);
+      });
+    supabase.from('properties').select('id, name').eq('status', 'active').order('name')
+      .then(({ data }) => { setProperties(data ?? []); });
+  }, []);
 
   useEffect(() => {
-    if (!form.property_id) { setUnits([]); return; }
-    (async () => {
-      const { data } = await supabase.from('units').select('id, unit_number').eq('property_id', form.property_id).order('unit_number');
-      setUnits(data ?? []);
-    })();
+    if (!form.property_id) return;
+    supabase.from('units').select('id, unit_number').eq('property_id', form.property_id).order('unit_number')
+      .then(({ data }) => { setUnits(data ?? []); });
   }, [form.property_id]);
 
   const handleSubmit = async () => {
@@ -84,6 +88,7 @@ export function ListingsPage() {
     setSaving(false);
     setShowModal(false);
     setForm(emptyForm);
+    setLoading(true);
     fetchListings();
   };
 
@@ -137,14 +142,14 @@ export function ListingsPage() {
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium">Property *</label>
-              <select className="input w-full" value={form.property_id} onChange={(e) => setForm({ ...form, property_id: e.target.value, unit_id: '' })}>
+              <select className="input w-full" aria-label="Property" value={form.property_id} onChange={(e) => { setForm({ ...form, property_id: e.target.value, unit_id: '' }); if (!e.target.value) setUnits([]); }}>
                 <option value="">Select property</option>
                 {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium">Unit</label>
-              <select className="input w-full" value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
+              <select className="input w-full" aria-label="Unit" value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
                 <option value="">All units / general</option>
                 {units.map((u) => <option key={u.id} value={u.id}>{u.unit_number}</option>)}
               </select>
@@ -155,7 +160,7 @@ export function ListingsPage() {
             </div>
             <div>
               <label className="text-xs font-medium">Listing Type</label>
-              <select className="input w-full" value={form.listing_type} onChange={(e) => setForm({ ...form, listing_type: e.target.value as Form['listing_type'] })}>
+              <select className="input w-full" aria-label="Listing type" value={form.listing_type} onChange={(e) => setForm({ ...form, listing_type: e.target.value as Form['listing_type'] })}>
                 {(['rent', 'sale', 'lease'] as const).map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>

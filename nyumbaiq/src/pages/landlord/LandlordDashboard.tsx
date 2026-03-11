@@ -28,7 +28,7 @@ export function LandlordDashboard() {
 
       setStats({ collected, outstanding, vacant: vacant ?? 0, emergencyMaint: emergency ?? 0 });
     })();
-  }, [profile?.id]);
+  }, [profile]);
 
   return (
     <Shell title="Portfolio Health" role="landlord">

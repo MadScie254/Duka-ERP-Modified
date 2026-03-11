@@ -67,19 +67,26 @@ export function MaintenancePage() {
     setLoading(false);
   };
 
-  const fetchProperties = async () => {
-    const { data } = await supabase.from('properties').select('id, name').eq('status', 'active').order('name');
-    setProperties(data ?? []);
-  };
-
-  useEffect(() => { fetchRequests(); fetchProperties(); }, []);
+  useEffect(() => {
+    const q = supabase
+      .from('maintenance_requests')
+      .select('*, properties(name), units(unit_number), reporter:profiles!maintenance_requests_reported_by_fkey(full_name)')
+      .order('created_at', { ascending: false });
+    if (role === 'tenant' && profile) {
+      q.eq('reported_by', profile.id);
+    }
+    q.then(({ data }) => {
+      setRequests((data ?? []) as MaintenanceRequest[]);
+      setLoading(false);
+    });
+    supabase.from('properties').select('id, name').eq('status', 'active').order('name')
+      .then(({ data }) => { setProperties(data ?? []); });
+  }, [role, profile]);
 
   useEffect(() => {
-    if (!form.property_id) { setUnits([]); return; }
-    (async () => {
-      const { data } = await supabase.from('units').select('id, unit_number').eq('property_id', form.property_id).order('unit_number');
-      setUnits(data ?? []);
-    })();
+    if (!form.property_id) return;
+    supabase.from('units').select('id, unit_number').eq('property_id', form.property_id).order('unit_number')
+      .then(({ data }) => { setUnits(data ?? []); });
   }, [form.property_id]);
 
   const handleSubmit = async () => {
@@ -97,6 +104,7 @@ export function MaintenancePage() {
     setSaving(false);
     setShowModal(false);
     setForm(emptyForm);
+    setLoading(true);
     fetchRequests();
   };
 
@@ -144,27 +152,27 @@ export function MaintenancePage() {
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium">Property *</label>
-              <select className="input w-full" value={form.property_id} onChange={(e) => setForm({ ...form, property_id: e.target.value, unit_id: '' })}>
+              <select className="input w-full" aria-label="Property" value={form.property_id} onChange={(e) => { setForm({ ...form, property_id: e.target.value, unit_id: '' }); if (!e.target.value) setUnits([]); }}>
                 <option value="">Select property</option>
                 {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium">Unit</label>
-              <select className="input w-full" value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
+              <select className="input w-full" aria-label="Unit" value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
                 <option value="">Select unit (optional)</option>
                 {units.map((u) => <option key={u.id} value={u.id}>{u.unit_number}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium">Category *</label>
-              <select className="input w-full" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as Form['category'] })}>
+              <select className="input w-full" aria-label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as Form['category'] })}>
                 {categories.map((c) => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium">Priority *</label>
-              <select className="input w-full" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as Form['priority'] })}>
+              <select className="input w-full" aria-label="Priority" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as Form['priority'] })}>
                 {(['low', 'medium', 'high', 'emergency'] as const).map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>

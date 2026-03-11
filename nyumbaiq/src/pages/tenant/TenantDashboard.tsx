@@ -45,7 +45,7 @@ export function TenantDashboard() {
         deposit: lease?.deposit_paid ?? 0,
       });
     })();
-  }, [profile?.id]);
+  }, [profile]);
 
   return (
     <Shell title="My Lease" role="tenant">

@@ -23,7 +23,7 @@ export function AgentDashboard() {
         views: rows.reduce((s, r) => s + (r.views_count ?? 0), 0),
       });
     })();
-  }, [profile?.id]);
+  }, [profile]);
 
   return (
     <Shell title="Listings Performance" role="agent">
