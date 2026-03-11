@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
-import { useAuthStore } from '../../../store/authStore';
-import type { Lease } from '../../../lib/types';
-import { Shell } from '../../../components/layout/Shell';
-import { Badge } from '../../../components/ui/Badge';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { formatKES, formatDate } from '../../../lib/formatters';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../store/authStore';
+import type { Lease } from '../../lib/types';
+import { Shell } from '../../components/layout/Shell';
+import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { formatKES, formatDate } from '../../lib/formatters';
 import { FileText } from 'lucide-react';
 
 const leaseTone = (s: string) => {

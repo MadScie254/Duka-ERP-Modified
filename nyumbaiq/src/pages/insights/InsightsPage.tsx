@@ -78,7 +78,7 @@ export function InsightsPage() {
           icon={<Sparkles size={40} />}
           title="No insights yet"
           description="Click 'Generate New' to get AI-powered insights about your portfolio."
-          action={{ label: 'Generate Insights', onClick: generateInsights }}
+          action={<button className="btn" onClick={generateInsights}>Generate Insights</button>}
         />
       ) : (
         <div className="space-y-4">

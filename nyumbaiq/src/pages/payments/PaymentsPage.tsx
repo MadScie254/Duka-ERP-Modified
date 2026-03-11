@@ -126,8 +126,8 @@ export function PaymentsPage() {
         </div>
       )}
 
-      {showPay && selected && (
-        <Modal title="Pay via M-Pesa" onClose={() => { setShowPay(false); setPushResult(null); }}>
+      {selected && (
+        <Modal open={showPay} title="Pay via M-Pesa" onClose={() => { setShowPay(false); setPushResult(null); }}>
           <div className="space-y-4">
             <p className="text-sm text-gray">
               Balance: <span className="font-bold text-navy">{formatKES(selected.amount_expected - (selected.amount_paid ?? 0))}</span>

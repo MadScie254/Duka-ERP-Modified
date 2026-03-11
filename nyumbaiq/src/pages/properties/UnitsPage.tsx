@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
-import { useAuthStore } from '../../../store/authStore';
-import type { Unit, Property } from '../../../lib/types';
-import { Shell } from '../../../components/layout/Shell';
-import { Badge } from '../../../components/ui/Badge';
-import { Modal } from '../../../components/ui/Modal';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { formatKES } from '../../../lib/formatters';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../store/authStore';
+import type { Unit, Property } from '../../lib/types';
+import { Shell } from '../../components/layout/Shell';
+import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { formatKES } from '../../lib/formatters';
 import { DoorOpen, Plus } from 'lucide-react';
 
 const unitTypeLabels: Record<string, string> = {

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
-import { useAuthStore } from '../../../store/authStore';
-import type { Property } from '../../../lib/types';
-import { Shell } from '../../../components/layout/Shell';
-import { Badge } from '../../../components/ui/Badge';
-import { Modal } from '../../../components/ui/Modal';
-import { CountySelect } from '../../../components/ui/CountySelect';
-import { EmptyState } from '../../../components/ui/EmptyState';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../store/authStore';
+import type { Property } from '../../lib/types';
+import { Shell } from '../../components/layout/Shell';
+import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
+import { CountySelect } from '../../components/ui/CountySelect';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Building2, Plus, MapPin } from 'lucide-react';
 
 export function PropertiesPage() {

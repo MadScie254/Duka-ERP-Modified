@@ -114,7 +114,7 @@ export function MaintenancePage() {
       {loading ? (
         <div className="card p-6 text-center text-gray">Loading...</div>
       ) : requests.length === 0 ? (
-        <EmptyState icon={<Wrench size={40} />} title="No requests" description="Submit a maintenance request to get started." action={{ label: 'New Request', onClick: () => setShowModal(true) }} />
+        <EmptyState icon={<Wrench size={40} />} title="No requests" description="Submit a maintenance request to get started." action={<button className="btn" onClick={() => setShowModal(true)}>New Request</button>} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {requests.map((r) => {
@@ -140,8 +140,7 @@ export function MaintenancePage() {
         </div>
       )}
 
-      {showModal && (
-        <Modal title="New Maintenance Request" onClose={() => setShowModal(false)} wide>
+      <Modal open={showModal} title="New Maintenance Request" onClose={() => setShowModal(false)} wide>
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium">Property *</label>
@@ -181,8 +180,7 @@ export function MaintenancePage() {
               {saving ? 'Submitting...' : 'Submit Request'}
             </button>
           </div>
-        </Modal>
-      )}
+      </Modal>
     </Shell>
   );
 }

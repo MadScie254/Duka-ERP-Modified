@@ -99,7 +99,7 @@ export function ListingsPage() {
       {loading ? (
         <div className="card p-6 text-center text-gray">Loading...</div>
       ) : listings.length === 0 ? (
-        <EmptyState icon={<Megaphone size={40} />} title="No listings" description="Create a listing to attract tenants." action={{ label: 'New Listing', onClick: () => setShowModal(true) }} />
+        <EmptyState icon={<Megaphone size={40} />} title="No listings" description="Create a listing to attract tenants." action={<button className="btn" onClick={() => setShowModal(true)}>New Listing</button>} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {listings.map((l) => {
@@ -133,8 +133,7 @@ export function ListingsPage() {
         </div>
       )}
 
-      {showModal && (
-        <Modal title="New Listing" onClose={() => setShowModal(false)} wide>
+      <Modal open={showModal} title="New Listing" onClose={() => setShowModal(false)} wide>
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium">Property *</label>
@@ -180,8 +179,7 @@ export function ListingsPage() {
               {saving ? 'Creating...' : 'Create Listing'}
             </button>
           </div>
-        </Modal>
-      )}
+      </Modal>
     </Shell>
   );
 }

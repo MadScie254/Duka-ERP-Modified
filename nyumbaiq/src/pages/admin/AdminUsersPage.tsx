@@ -7,12 +7,7 @@ import type { Profile } from '../../store/authStore';
 import type { UserRole } from '../../store/authStore';
 import { Users, Shield } from 'lucide-react';
 
-const roleTone = (r: string) => {
-  if (r === 'admin') return 'danger' as const;
-  if (r === 'landlord') return 'info' as const;
-  if (r === 'agent') return 'warning' as const;
-  return 'default' as const;
-};
+
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
