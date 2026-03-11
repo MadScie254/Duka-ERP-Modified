@@ -104,8 +104,17 @@ class MockQueryBuilder {
   single() { this.isSingle = true; return this; }
   maybeSingle() { this.isMaybeSingle = true; return this; }
 
-  async then<T>(resolve: (v: T) => void) {
-    resolve(this.execute() as T);
+  then<TResult1 = { data: unknown; count?: number; error: null }, TResult2 = never>(
+    onfulfilled?: ((value: { data: unknown; count?: number; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    try {
+      const result = this.execute();
+      return Promise.resolve(onfulfilled ? onfulfilled(result) : result as unknown as TResult1);
+    } catch (e) {
+      if (onrejected) return Promise.resolve(onrejected(e));
+      return Promise.reject(e);
+    }
   }
 
   execute(): { data: unknown; count?: number; error: null } {
