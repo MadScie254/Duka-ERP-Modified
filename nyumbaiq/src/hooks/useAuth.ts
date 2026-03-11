@@ -1,23 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Session } from '@supabase/supabase-js';
+import { useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useAuthStore } from '../store/authStore';
 
-export type Profile = {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  role: 'admin' | 'landlord' | 'agent' | 'tenant';
-  avatar_url: string | null;
-  county: string | null;
-  national_id: string | null;
-  is_active: boolean;
-};
+export type { Profile } from '../store/authStore';
 
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { session, profile, loading, setSession, setProfile, setLoading, loadProfile } = useAuthStore();
 
   useEffect(() => {
     let mounted = true;
@@ -46,16 +34,7 @@ export function useAuth() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
-
-  const loadProfile = async (userId: string) => {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (error) {
-      console.error('Unable to fetch profile', error.message);
-      return;
-    }
-    setProfile(data as Profile);
-  };
+  }, [setSession, setProfile, setLoading, loadProfile]);
 
   return { session, profile, loading };
 }
