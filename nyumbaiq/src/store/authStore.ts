@@ -27,10 +27,24 @@ type AuthState = {
   signOut: () => Promise<void>;
 };
 
+// DEV BYPASS: fake admin profile so you can see the dashboard without logging in
+const DEV_BYPASS = true;
+const devProfile: Profile = {
+  id: 'dev-user',
+  full_name: 'Dev Admin',
+  email: 'dev@nyumbaiq.test',
+  phone: '+254700000000',
+  role: 'admin',
+  avatar_url: null,
+  county: 'Nairobi',
+  national_id: null,
+  is_active: true,
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   session: null,
-  profile: null,
-  loading: true,
+  profile: DEV_BYPASS ? devProfile : null,
+  loading: DEV_BYPASS ? false : true,
   setSession: (s) => set({ session: s }),
   setProfile: (p) => set({ profile: p }),
   setLoading: (l) => set({ loading: l }),
