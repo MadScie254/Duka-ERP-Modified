@@ -14,7 +14,11 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) setError(signInError.message);
+    if (signInError) {
+      setError(signInError.message);
+    } else {
+      navigate('/dashboard');
+    }
     setLoading(false);
   };
 
