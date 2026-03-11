@@ -158,7 +158,45 @@ export function MaintenancePage() {
       ) : requests.length === 0 ? (
         <EmptyState icon={<Wrench size={40} />} title="No requests" description="Submit a maintenance request to get started." action={<button className="btn" onClick={() => setShowModal(true)}>New Request</button>} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <>
+          {/* ── Analytics strip ── */}
+          <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <StatCard label="Open / In Progress" value={String(openCount)} tone={openCount > 2 ? 'danger' : openCount > 0 ? 'warning' : 'success'} />
+            <StatCard label="Total Requests" value={String(requests.length)} />
+            <StatCard label="Avg Resolution Time" value={avgResolution !== null ? `${avgResolution} days` : '—'} hint={avgResolution !== null && avgResolution > 7 ? 'Above 7-day target' : ''} tone={avgResolution !== null && avgResolution > 7 ? 'warning' : 'default'} />
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-4 mb-6">
+            <ChartCard title="By Category" subtitle="Request distribution by type">
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={catData} layout="vertical" barSize={18}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="value" name="Requests" fill={CHART_COLORS.blue} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="By Status" subtitle="Current status breakdown">
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={75} paddingAngle={3} label={({ name, value }) => `${name} (${value})`}>
+                    {statusData.map((entry, i) => (
+                      <Cell key={i} fill={STATUS_COLORS[entry.name.replace(/ /g, '_')] ?? PIE_PALETTE[i % PIE_PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+
+          {/* ── Request cards ── */}
+          <h3 className="text-sm font-semibold mb-3">All Requests</h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {requests.map((r) => {
             const prop = r.property as unknown as { name: string } | null;
             const unit = r.unit as unknown as { unit_number: string } | null;
