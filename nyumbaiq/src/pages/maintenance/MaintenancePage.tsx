@@ -6,8 +6,15 @@ import { Shell } from '../../components/layout/Shell';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Modal } from '../../components/ui/Modal';
+import { ChartCard } from '../../components/ui/ChartCard';
+import { StatCard } from '../../components/ui/StatCard';
 import { formatDate } from '../../lib/formatters';
 import { Wrench, Plus } from 'lucide-react';
+import { CHART_COLORS, PIE_PALETTE, STATUS_COLORS } from '../../lib/chartColors';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  PieChart, Pie, Cell, Legend,
+} from 'recharts';
 
 const priorityTone = (p: string) => {
   if (p === 'low') return 'default' as const;
@@ -51,6 +58,12 @@ export function MaintenancePage() {
   const [properties, setProperties] = useState<{ id: string; name: string }[]>([]);
   const [units, setUnits] = useState<{ id: string; unit_number: string }[]>([]);
 
+  // Analytics state
+  const [catData, setCatData] = useState<{ name: string; value: number }[]>([]);
+  const [statusData, setStatusData] = useState<{ name: string; value: number }[]>([]);
+  const [avgResolution, setAvgResolution] = useState<number | null>(null);
+  const [openCount, setOpenCount] = useState(0);
+
   const fetchRequests = async () => {
     setLoading(true);
     const q = supabase
@@ -76,8 +89,29 @@ export function MaintenancePage() {
       q.eq('reported_by', profile.id);
     }
     q.then(({ data }) => {
-      setRequests((data ?? []) as MaintenanceRequest[]);
+      const reqs = (data ?? []) as MaintenanceRequest[];
+      setRequests(reqs);
       setLoading(false);
+
+      // Compute analytics
+      const catMap = new Map<string, number>();
+      const statMap = new Map<string, number>();
+      let totalRes = 0;
+      let resCount = 0;
+      let opens = 0;
+      for (const r of reqs) {
+        catMap.set(r.category, (catMap.get(r.category) ?? 0) + 1);
+        statMap.set(r.status, (statMap.get(r.status) ?? 0) + 1);
+        if (r.status === 'open' || r.status === 'in_progress') opens++;
+        if (r.resolved_at && r.opened_at) {
+          totalRes += (new Date(r.resolved_at).getTime() - new Date(r.opened_at).getTime()) / 86400000;
+          resCount++;
+        }
+      }
+      setCatData([...catMap.entries()].map(([name, value]) => ({ name: name.replace(/_/g, ' '), value })));
+      setStatusData([...statMap.entries()].map(([name, value]) => ({ name: name.replace(/_/g, ' '), value })));
+      setAvgResolution(resCount > 0 ? Math.round(totalRes / resCount) : null);
+      setOpenCount(opens);
     });
     supabase.from('properties').select('id, name').eq('status', 'active').order('name')
       .then(({ data }) => { setProperties(data ?? []); });
