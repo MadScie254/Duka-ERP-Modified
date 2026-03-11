@@ -172,9 +172,18 @@ class MockQueryBuilder {
     return { data: projected, count: this.countMode ? projected.length : undefined, error: null };
   }
 
-  // Insert / update stubs — just log
-  async insert(_row: unknown) { console.log(`[mock] INSERT into ${this.tableName}`, _row); return { data: null, error: null }; }
-  async update(_vals: unknown) { console.log(`[mock] UPDATE ${this.tableName}`, _vals, this.filters); return { data: null, error: null }; }
+  // Insert / update stubs
+  insert(_row: unknown) {
+    console.log(`[mock] INSERT into ${this.tableName}`, _row);
+    // Return a thenable that resolves immediately
+    return { data: null, error: null, then: (fn: (v: { data: null; error: null }) => void) => Promise.resolve(fn ? fn({ data: null, error: null }) : { data: null, error: null }) };
+  }
+
+  update(_vals: unknown) {
+    console.log(`[mock] UPDATE ${this.tableName}`, _vals);
+    // Return self so .eq() can be chained after .update()
+    return this;
+  }
 }
 
 // ─── Mock channel (no-op) ──────────────────────────────────
