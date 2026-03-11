@@ -48,6 +48,21 @@ export function InsightsPage() {
 
   useEffect(() => { fetchInsights(); }, [fetchInsights]);
 
+  /* ── Derived chart data ── */
+  const typeData = useMemo(() => {
+    const map: Record<string, number> = {};
+    insights.forEach((i) => { map[typeLabel[i.insight_type] ?? i.insight_type] = (map[typeLabel[i.insight_type] ?? i.insight_type] || 0) + 1; });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [insights]);
+
+  const sevData = useMemo(() => {
+    const map: Record<string, number> = {};
+    insights.forEach((i) => { map[i.severity] = (map[i.severity] || 0) + 1; });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [insights]);
+
+  const sevColor: Record<string, string> = { info: CHART_COLORS.blue, warning: CHART_COLORS.amber, critical: CHART_COLORS.red, opportunity: CHART_COLORS.green };
+
   const generateInsights = async () => {
     setGenerating(true);
     try {
@@ -84,8 +99,39 @@ export function InsightsPage() {
           action={<button className="btn" onClick={generateInsights}>Generate Insights</button>}
         />
       ) : (
-        <div className="space-y-4">
-          {insights.map((i) => (
+        <>
+          {/* ── Insight distribution charts ── */}
+          <div className="grid lg:grid-cols-2 gap-4 mb-6">
+            <ChartCard title="By Category" subtitle="Insight topic distribution">
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={typeData} layout="vertical" barSize={18}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="value" name="Insights" fill={CHART_COLORS.blue} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="By Severity" subtitle="How urgent are the insights">
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie data={sevData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} label={({ name, value }) => `${name} (${value})`}>
+                    {sevData.map((entry, i) => (
+                      <Cell key={i} fill={sevColor[entry.name] ?? PIE_PALETTE[i % PIE_PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+
+          {/* ── Insight cards ── */}
+          <div className="space-y-4">
+            {insights.map((i) => (
             <div key={i.id} className="card p-5 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -99,7 +145,8 @@ export function InsightsPage() {
               <p className="text-xs text-gray/60">{formatDate(i.created_at)}</p>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </Shell>
   );
