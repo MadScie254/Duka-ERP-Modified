@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Building2, Users, CreditCard, Wrench, Bell, LogOut } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, CreditCard, Wrench, Bell, LogOut, Sparkles, Megaphone, Home } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
 type ShellProps = {
@@ -23,14 +23,15 @@ const navByRole: Record<ShellProps['role'], { label: string; icon: React.FC<any>
     { label: 'Tenants', icon: Users, to: '/landlord/tenants' },
     { label: 'Payments', icon: CreditCard, to: '/landlord/payments' },
     { label: 'Maintenance', icon: Wrench, to: '/landlord/maintenance' },
+    { label: 'AI Insights', icon: Sparkles, to: '/landlord/insights' },
   ],
   agent: [
-    { label: 'Listings', icon: LayoutDashboard, to: '/dashboard' },
-    { label: 'Properties', icon: Building2, to: '/agent/listings' },
+    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+    { label: 'Listings', icon: Megaphone, to: '/agent/listings' },
     { label: 'Clients', icon: Users, to: '/agent/clients' },
   ],
   tenant: [
-    { label: 'My Home', icon: LayoutDashboard, to: '/dashboard' },
+    { label: 'My Home', icon: Home, to: '/dashboard' },
     { label: 'Payments', icon: CreditCard, to: '/tenant/payments' },
     { label: 'Maintenance', icon: Wrench, to: '/tenant/maintenance' },
   ],
