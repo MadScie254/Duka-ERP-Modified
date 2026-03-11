@@ -20,9 +20,22 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
-      setError(signInError.message);
+      // Surface email-confirmation hint
+      if (signInError.message === 'Email not confirmed') {
+        setError('Please confirm your email address first. Check your inbox for the confirmation link.');
+      } else {
+        setError(signInError.message);
+      }
+      setLoading(false);
+      return;
+    }
+    // Explicit navigation as fallback (profile useEffect also redirects)
+    if (data.session) {
+      // Load profile eagerly so RequireAuth doesn't bounce us back
+      await useAuthStore.getState().loadProfile(data.session.user.id);
+      navigate('/dashboard', { replace: true });
     }
     setLoading(false);
   };
