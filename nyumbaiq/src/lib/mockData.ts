@@ -54,14 +54,61 @@ export const leases: Lease[] = [
   { id: 'lease-6', property_id: 'prop-1', unit_id: 'unit-4', tenant_id: 'tenant-3', landlord_id: 'landlord-1', start_date: daysAgo(150), end_date: null, monthly_rent: 85000, deposit_paid: 170000, lease_terms: null, payment_day: 5, auto_renew: true, status: 'active', signed_at: daysAgo(150), pdf_url: null, created_at: daysAgo(150), updated_at: daysAgo(3) },
 ];
 
-// ─── Rent Payments ────────────────────────────────────────
+// ─── Helper to generate calendar months ─────────────────
+const monthOf = (monthsAgo: number) => {
+  const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
+// ─── Rent Payments (6-month history for trends) ──────────
+let payId = 0;
+const pay = (overrides: Partial<RentPayment> & Pick<RentPayment, 'lease_id' | 'tenant_id' | 'property_id' | 'unit_id' | 'amount_expected' | 'amount_paid' | 'payment_method' | 'payment_for_month' | 'status'>): RentPayment => ({
+  id: `pay-${++payId}`,
+  mpesa_code: overrides.payment_method === 'mpesa' ? `MPX${String(payId).padStart(7, '0')}` : null,
+  mpesa_phone: overrides.payment_method === 'mpesa' ? '+254700000000' : null,
+  mpesa_receipt_url: null,
+  payment_date: overrides.status === 'pending' ? null : daysAgo(Math.floor(Math.random() * 5) + 1),
+  late_fee_applied: null,
+  notes: null,
+  recorded_by: null,
+  created_at: daysAgo(Math.floor(Math.random() * 5) + 1),
+  ...overrides,
+});
+
 export const rentPayments: RentPayment[] = [
-  { id: 'pay-1', lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', mpesa_code: 'SLK4J7M2QR', mpesa_phone: '+254745678901', mpesa_receipt_url: null, payment_for_month: monthStart, payment_date: daysAgo(3), status: 'confirmed', late_fee_applied: null, notes: null, recorded_by: null, created_at: daysAgo(3) },
-  { id: 'pay-2', lease_id: 'lease-2', tenant_id: 'tenant-2', property_id: 'prop-1', unit_id: 'unit-2', amount_expected: 55000, amount_paid: 55000, payment_method: 'mpesa', mpesa_code: 'RKJ8N3P5QT', mpesa_phone: '+254756789012', mpesa_receipt_url: null, payment_for_month: monthStart, payment_date: daysAgo(2), status: 'confirmed', late_fee_applied: null, notes: null, recorded_by: null, created_at: daysAgo(2) },
-  { id: 'pay-3', lease_id: 'lease-5', tenant_id: 'tenant-2', property_id: 'prop-2', unit_id: 'unit-5', amount_expected: 120000, amount_paid: 120000, payment_method: 'bank_transfer', mpesa_code: null, mpesa_phone: null, mpesa_receipt_url: null, payment_for_month: monthStart, payment_date: daysAgo(1), status: 'confirmed', late_fee_applied: null, notes: 'Bank reference: KCB-2026-XXXXX', recorded_by: null, created_at: daysAgo(1) },
-  { id: 'pay-4', lease_id: 'lease-6', tenant_id: 'tenant-3', property_id: 'prop-1', unit_id: 'unit-4', amount_expected: 85000, amount_paid: 40000, payment_method: 'mpesa', mpesa_code: 'QWE9K4L1MS', mpesa_phone: '+254767890123', mpesa_receipt_url: null, payment_for_month: monthStart, payment_date: daysAgo(5), status: 'partial', late_fee_applied: null, notes: null, recorded_by: null, created_at: daysAgo(5) },
-  { id: 'pay-5', lease_id: 'lease-4', tenant_id: 'tenant-1', property_id: 'prop-4', unit_id: 'unit-9', amount_expected: 12000, amount_paid: null, payment_method: 'mpesa', mpesa_code: null, mpesa_phone: null, mpesa_receipt_url: null, payment_for_month: monthStart, payment_date: null, status: 'pending', late_fee_applied: null, notes: null, recorded_by: null, created_at: daysAgo(1) },
-  { id: 'pay-6', lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', mpesa_code: 'ABC1D2E3FG', mpesa_phone: '+254745678901', mpesa_receipt_url: null, payment_for_month: `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}-01`, payment_date: daysAgo(33), status: 'confirmed', late_fee_applied: null, notes: null, recorded_by: null, created_at: daysAgo(33) },
+  // ── Current month ────────────────────────────
+  pay({ lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', payment_for_month: monthOf(0), status: 'confirmed' }),
+  pay({ lease_id: 'lease-2', tenant_id: 'tenant-2', property_id: 'prop-1', unit_id: 'unit-2', amount_expected: 55000, amount_paid: 55000, payment_method: 'mpesa', payment_for_month: monthOf(0), status: 'confirmed' }),
+  pay({ lease_id: 'lease-5', tenant_id: 'tenant-2', property_id: 'prop-2', unit_id: 'unit-5', amount_expected: 120000, amount_paid: 120000, payment_method: 'bank_transfer', payment_for_month: monthOf(0), status: 'confirmed' }),
+  pay({ lease_id: 'lease-6', tenant_id: 'tenant-3', property_id: 'prop-1', unit_id: 'unit-4', amount_expected: 85000, amount_paid: 40000, payment_method: 'mpesa', payment_for_month: monthOf(0), status: 'partial' }),
+  pay({ lease_id: 'lease-4', tenant_id: 'tenant-1', property_id: 'prop-4', unit_id: 'unit-9', amount_expected: 12000, amount_paid: null, payment_method: 'mpesa', payment_for_month: monthOf(0), status: 'pending' }),
+
+  // ── 1 month ago ──────────────────────────────
+  pay({ lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', payment_for_month: monthOf(1), status: 'confirmed' }),
+  pay({ lease_id: 'lease-2', tenant_id: 'tenant-2', property_id: 'prop-1', unit_id: 'unit-2', amount_expected: 55000, amount_paid: 55000, payment_method: 'bank_transfer', payment_for_month: monthOf(1), status: 'confirmed' }),
+  pay({ lease_id: 'lease-5', tenant_id: 'tenant-2', property_id: 'prop-2', unit_id: 'unit-5', amount_expected: 120000, amount_paid: 120000, payment_method: 'bank_transfer', payment_for_month: monthOf(1), status: 'confirmed' }),
+  pay({ lease_id: 'lease-6', tenant_id: 'tenant-3', property_id: 'prop-1', unit_id: 'unit-4', amount_expected: 85000, amount_paid: 85000, payment_method: 'mpesa', payment_for_month: monthOf(1), status: 'confirmed' }),
+  pay({ lease_id: 'lease-4', tenant_id: 'tenant-1', property_id: 'prop-4', unit_id: 'unit-9', amount_expected: 12000, amount_paid: 12000, payment_method: 'mpesa', payment_for_month: monthOf(1), status: 'confirmed' }),
+
+  // ── 2 months ago ─────────────────────────────
+  pay({ lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', payment_for_month: monthOf(2), status: 'confirmed' }),
+  pay({ lease_id: 'lease-2', tenant_id: 'tenant-2', property_id: 'prop-1', unit_id: 'unit-2', amount_expected: 55000, amount_paid: 55000, payment_method: 'mpesa', payment_for_month: monthOf(2), status: 'confirmed' }),
+  pay({ lease_id: 'lease-5', tenant_id: 'tenant-2', property_id: 'prop-2', unit_id: 'unit-5', amount_expected: 120000, amount_paid: 100000, payment_method: 'bank_transfer', payment_for_month: monthOf(2), status: 'partial' }),
+  pay({ lease_id: 'lease-6', tenant_id: 'tenant-3', property_id: 'prop-1', unit_id: 'unit-4', amount_expected: 85000, amount_paid: 85000, payment_method: 'cash', payment_for_month: monthOf(2), status: 'confirmed' }),
+
+  // ── 3 months ago ─────────────────────────────
+  pay({ lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', payment_for_month: monthOf(3), status: 'confirmed' }),
+  pay({ lease_id: 'lease-2', tenant_id: 'tenant-2', property_id: 'prop-1', unit_id: 'unit-2', amount_expected: 55000, amount_paid: 30000, payment_method: 'mpesa', payment_for_month: monthOf(3), status: 'partial' }),
+  pay({ lease_id: 'lease-5', tenant_id: 'tenant-2', property_id: 'prop-2', unit_id: 'unit-5', amount_expected: 120000, amount_paid: 120000, payment_method: 'bank_transfer', payment_for_month: monthOf(3), status: 'confirmed' }),
+
+  // ── 4 months ago ─────────────────────────────
+  pay({ lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', payment_for_month: monthOf(4), status: 'confirmed' }),
+  pay({ lease_id: 'lease-2', tenant_id: 'tenant-2', property_id: 'prop-1', unit_id: 'unit-2', amount_expected: 55000, amount_paid: 55000, payment_method: 'bank_transfer', payment_for_month: monthOf(4), status: 'confirmed' }),
+  pay({ lease_id: 'lease-5', tenant_id: 'tenant-2', property_id: 'prop-2', unit_id: 'unit-5', amount_expected: 120000, amount_paid: 120000, payment_method: 'bank_transfer', payment_for_month: monthOf(4), status: 'confirmed' }),
+
+  // ── 5 months ago ─────────────────────────────
+  pay({ lease_id: 'lease-1', tenant_id: 'tenant-1', property_id: 'prop-1', unit_id: 'unit-1', amount_expected: 35000, amount_paid: 35000, payment_method: 'mpesa', payment_for_month: monthOf(5), status: 'confirmed' }),
+  pay({ lease_id: 'lease-2', tenant_id: 'tenant-2', property_id: 'prop-1', unit_id: 'unit-2', amount_expected: 55000, amount_paid: 55000, payment_method: 'mpesa', payment_for_month: monthOf(5), status: 'confirmed' }),
 ];
 
 // ─── Maintenance Requests ─────────────────────────────────
