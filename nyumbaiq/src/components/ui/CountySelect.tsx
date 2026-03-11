@@ -12,6 +12,7 @@ export function CountySelect({ value, onChange, required }: CountySelectProps) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       required={required}
+      aria-label="County"
       className="w-full border border-border rounded-button px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue/40 bg-white"
     >
       <option value="">Select county</option>

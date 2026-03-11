@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Shell } from '../../components/layout/Shell';
 import { Badge } from '../../components/ui/Badge';
@@ -13,17 +13,16 @@ export function AdminUsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchUsers = async () => {
-    setLoading(true);
+  const fetchUsers = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
     setUsers((data ?? []) as Profile[]);
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const changeRole = async (userId: string, newRole: UserRole) => {
     await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
@@ -68,6 +67,7 @@ export function AdminUsersPage() {
                     <select
                       className="input py-1 px-2 text-xs"
                       value={u.role}
+                      aria-label="User role"
                       onChange={(e) => changeRole(u.id, e.target.value as UserRole)}
                     >
                       {(['admin', 'landlord', 'agent', 'tenant'] as const).map((r) => (

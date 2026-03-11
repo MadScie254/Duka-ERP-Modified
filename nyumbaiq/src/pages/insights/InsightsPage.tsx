@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import type { AIInsight } from '../../lib/types';
@@ -31,7 +31,7 @@ export function InsightsPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  const fetchInsights = async () => {
+  const fetchInsights = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
     const { data } = await supabase
@@ -41,9 +41,9 @@ export function InsightsPage() {
       .order('created_at', { ascending: false });
     setInsights((data ?? []) as AIInsight[]);
     setLoading(false);
-  };
+  }, [profile]);
 
-  useEffect(() => { fetchInsights(); }, [profile?.id]);
+  useEffect(() => { fetchInsights(); }, [fetchInsights]);
 
   const generateInsights = async () => {
     setGenerating(true);

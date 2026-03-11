@@ -17,7 +17,7 @@ export function Modal({ open, onClose, title, children, wide }: ModalProps) {
       <div className={`relative bg-white rounded-card shadow-modal w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[90vh] overflow-y-auto`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-lg font-bold">{title}</h2>
-          <button onClick={onClose} className="p-1 hover:bg-bg rounded-button">
+          <button onClick={onClose} className="p-1 hover:bg-bg rounded-button" aria-label="Close">
             <X size={18} />
           </button>
         </div>

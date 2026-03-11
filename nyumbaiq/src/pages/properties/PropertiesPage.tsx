@@ -17,10 +17,6 @@ export function PropertiesPage() {
 
   const role = profile?.role ?? 'tenant';
 
-  useEffect(() => {
-    loadProperties();
-  }, []);
-
   const loadProperties = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -30,6 +26,10 @@ export function PropertiesPage() {
     setProperties((data as Property[]) ?? []);
     setLoading(false);
   };
+
+  useEffect(() => {
+    loadProperties();
+  }, []);
 
   return (
     <Shell title="Properties" role={role}>
@@ -145,6 +145,7 @@ function AddPropertyModal({ open, onClose, onSaved }: { open: boolean; onClose: 
           <div>
             <label className="block text-sm font-medium mb-1">Type</label>
             <select value={propertyType} onChange={(e) => setPropertyType(e.target.value as 'residential' | 'commercial' | 'mixed')}
+              aria-label="Property type"
               className="w-full border border-border rounded-button px-3 py-2 bg-white">
               <option value="residential">Residential</option>
               <option value="commercial">Commercial</option>

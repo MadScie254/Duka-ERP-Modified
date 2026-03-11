@@ -29,8 +29,6 @@ export function UnitsPage() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
 
-  useEffect(() => { load(); }, []);
-
   const load = async () => {
     setLoading(true);
     const [u, p] = await Promise.all([
@@ -41,6 +39,8 @@ export function UnitsPage() {
     setProperties((p.data ?? []) as Property[]);
     setLoading(false);
   };
+
+  useEffect(() => { load(); }, []);
 
   return (
     <Shell title="Units" role={role}>
@@ -122,7 +122,7 @@ function AddUnitModal({ open, onClose, onSaved, properties }: { open: boolean; o
       <form onSubmit={handleSave} className="space-y-3">
         <div>
           <label className="block text-sm font-medium mb-1">Property</label>
-          <select required value={propertyId} onChange={(e) => setPropertyId(e.target.value)} className="w-full border border-border rounded-button px-3 py-2 bg-white">
+          <select required value={propertyId} onChange={(e) => setPropertyId(e.target.value)} aria-label="Property" className="w-full border border-border rounded-button px-3 py-2 bg-white">
             <option value="">Select property</option>
             {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -139,7 +139,7 @@ function AddUnitModal({ open, onClose, onSaved, properties }: { open: boolean; o
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Unit Type</label>
-          <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full border border-border rounded-button px-3 py-2 bg-white">
+          <select value={unitType} onChange={(e) => setUnitType(e.target.value)} aria-label="Unit type" className="w-full border border-border rounded-button px-3 py-2 bg-white">
             {Object.entries(unitTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
